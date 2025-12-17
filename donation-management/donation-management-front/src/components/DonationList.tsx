@@ -7,14 +7,16 @@ interface DonationListProps {
   loading: boolean;
   error?: string;
   onPageChange: (page: number) => void;
+  onDetail?: (donation: Donation) => void;
 }
 
-export default function DonationList({ 
-  donations, 
-  pagination, 
-  loading, 
-  error, 
-  onPageChange 
+export default function DonationList({
+  donations,
+  pagination,
+  loading,
+  error,
+  onPageChange,
+  onDetail
 }: DonationListProps) {
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -169,42 +171,42 @@ export default function DonationList({
                 {getStatusLabel(donation.status)}
               </span>
             </div>
-            
+
             <div className="donation-meta">
               <div className="meta-item">
                 <span className="meta-label">カテゴリ:</span>
                 <span className="meta-value">
-                  {donation.category.name}
+                  {donation.category?.name}
                   {donation.sub_category && ` > ${donation.sub_category.name}`}
                 </span>
               </div>
-              
+
               <div className="meta-item">
                 <span className="meta-label">保管場所:</span>
-                <span className="meta-value">{donation.location.name}</span>
+                <span className="meta-value">{donation.location?.name}</span>
               </div>
-              
+
               {donation.donor_name && (
                 <div className="meta-item">
                   <span className="meta-label">寄贈者:</span>
                   <span className="meta-value">{donation.donor_name}</span>
                 </div>
               )}
-              
+
               <div className="meta-item">
                 <span className="meta-label">寄贈日:</span>
                 <span className="meta-value">{donation.donated_date}</span>
               </div>
             </div>
 
-            {(donation.avg_rating || donation.review_count) && (
+            {((donation.avg_rating || 0) > 0 || (donation.review_count || 0) > 0) && (
               <div className="donation-ratings">
-                {donation.avg_rating && (
+                {(donation.avg_rating || 0) > 0 && (
                   <span className="rating">
-                    ⭐ {donation.avg_rating.toFixed(1)}
+                    ⭐ {donation.avg_rating?.toFixed(1)}
                   </span>
                 )}
-                {donation.review_count && (
+                {(donation.review_count || 0) > 0 && (
                   <span className="review-count">
                     ({donation.review_count}件のレビュー)
                   </span>
@@ -213,11 +215,11 @@ export default function DonationList({
             )}
 
             <div className="donation-actions">
-              <button 
+              <button
                 className="btn-primary"
-                disabled={donation.status !== 'available'}
+                onClick={() => onDetail?.(donation)}
               >
-                {donation.status === 'available' ? '詳細を見る' : '利用不可'}
+                詳細を見る
               </button>
             </div>
           </div>

@@ -1,7 +1,24 @@
 export interface Donation {
   id: string;
   title: string;
-  category: {
+  category_id: string;
+  sub_category_id?: string;
+  location_id: string;
+  status: 'available' | 'lending' | 'maintenance' | 'lost';
+  condition?: 'new' | 'good' | 'fair' | 'poor';
+  description?: string;
+  isbn?: string;
+  author?: string;
+  publisher?: string;
+  published_year?: number;
+  manufacturer?: string;
+  model_number?: string;
+  donor_name?: string;
+  donated_date: string;
+  image_url?: string;
+
+  // Nested objects for display
+  category?: {
     id: string;
     name: string;
   };
@@ -9,16 +26,16 @@ export interface Donation {
     id: string;
     name: string;
   };
-  status: 'available' | 'lending' | 'maintenance' | 'lost';
-  location: {
+  location?: {
     id: string;
     name: string;
   };
-  donor_name?: string;
-  donated_date: string;
+
   avg_rating?: number;
   review_count?: number;
   image_urls?: string[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Category {
