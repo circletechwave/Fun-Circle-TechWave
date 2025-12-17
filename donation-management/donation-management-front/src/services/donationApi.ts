@@ -1,7 +1,6 @@
 import type { Donation, Category, Location, SearchFilters, PaginationInfo } from '../types/donation';
 
 import { supabase } from '../lib/supabase';
-import type { Donation, Category, Location, SearchFilters, PaginationInfo } from '../types/donation';
 
 interface DonationListResponse {
   success: boolean;
