@@ -66,7 +66,7 @@ export default function AuthComponent() {
             }}
           />
         </div>
-        
+
         <div style={{ marginBottom: '15px' }}>
           <label htmlFor="password" style={{ display: 'block', marginBottom: '5px' }}>
             パスワード
@@ -134,7 +134,7 @@ export default function AuthComponent() {
 
       <div style={{ borderTop: '1px solid #ccc', paddingTop: '20px' }}>
         <p style={{ textAlign: 'center', marginBottom: '15px' }}>または</p>
-        
+
         <button
           onClick={() => handleOAuthLogin('github')}
           style={{
@@ -160,10 +160,51 @@ export default function AuthComponent() {
             color: 'white',
             border: 'none',
             borderRadius: '4px',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            marginBottom: '10px'
           }}
         >
           Googleでログイン
+        </button>
+
+        <button
+          onClick={async () => {
+            setLoading(true);
+            try {
+              const { error } = await supabase.auth.signInWithPassword({
+                email: 'admin@company.com',
+                password: 'password',
+              });
+              if (error) throw error;
+            } catch {
+              // If sign in fails, try to sign up (for dev convenience)
+              try {
+                const { error: signUpError } = await supabase.auth.signUp({
+                  email: 'admin@company.com',
+                  password: 'password',
+                });
+                if (signUpError) throw signUpError;
+                setMessage('開発用ユーザーを作成しました。もう一度クリックしてください。');
+              } catch (signUpError) {
+                const errorMessage = signUpError instanceof Error ? signUpError.message : 'エラーが発生しました';
+                setMessage(errorMessage);
+              }
+            } finally {
+              setLoading(false);
+            }
+          }}
+          style={{
+            width: '100%',
+            padding: '10px',
+            backgroundColor: '#666',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            marginTop: '10px'
+          }}
+        >
+          開発用ログイン (admin)
         </button>
       </div>
     </div>

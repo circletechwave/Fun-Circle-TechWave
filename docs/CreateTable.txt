@@ -1,0 +1,142 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.categories (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL UNIQUE,
+  description text,
+  display_order integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT categories_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.donation_images (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  donation_id uuid NOT NULL,
+  image_url character varying NOT NULL,
+  display_order integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT donation_images_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_donation_images_donation FOREIGN KEY (donation_id) REFERENCES public.donations(id)
+);
+CREATE TABLE public.donation_tags (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  donation_id uuid NOT NULL,
+  tag_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT donation_tags_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_donation_tags_donation FOREIGN KEY (donation_id) REFERENCES public.donations(id),
+  CONSTRAINT fk_donation_tags_tag FOREIGN KEY (tag_id) REFERENCES public.tags(id)
+);
+CREATE TABLE public.donations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title character varying NOT NULL,
+  category_id uuid NOT NULL,
+  sub_category_id uuid,
+  donor_name character varying,
+  donated_date date NOT NULL,
+  location_id uuid NOT NULL,
+  status character varying NOT NULL DEFAULT 'available'::character varying CHECK (status::text = ANY (ARRAY['available'::character varying, 'lending'::character varying, 'maintenance'::character varying, 'lost'::character varying]::text[])),
+  description text,
+  isbn character varying,
+  author character varying,
+  publisher character varying,
+  published_year integer,
+  manufacturer character varying,
+  model_number character varying,
+  condition character varying CHECK (condition::text = ANY (ARRAY['new'::character varying, 'good'::character varying, 'fair'::character varying, 'poor'::character varying]::text[])),
+  created_by uuid NOT NULL,
+  updated_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at timestamp with time zone,
+  CONSTRAINT donations_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_donations_category FOREIGN KEY (category_id) REFERENCES public.categories(id),
+  CONSTRAINT fk_donations_sub_category FOREIGN KEY (sub_category_id) REFERENCES public.sub_categories(id),
+  CONSTRAINT fk_donations_location FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT fk_donations_created_by FOREIGN KEY (created_by) REFERENCES public.users(id),
+  CONSTRAINT fk_donations_updated_by FOREIGN KEY (updated_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.favorites (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  donation_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT favorites_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_favorites_donation FOREIGN KEY (donation_id) REFERENCES public.donations(id),
+  CONSTRAINT fk_favorites_user FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.lendings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  donation_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  borrowed_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  due_date date NOT NULL,
+  returned_at timestamp with time zone,
+  status character varying NOT NULL DEFAULT 'active'::character varying CHECK (status::text = ANY (ARRAY['active'::character varying, 'returned'::character varying, 'overdue'::character varying, 'cancelled'::character varying]::text[])),
+  purpose text,
+  extension_count integer NOT NULL DEFAULT 0 CHECK (extension_count >= 0 AND extension_count <= 2),
+  approved_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT lendings_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_lendings_donation FOREIGN KEY (donation_id) REFERENCES public.donations(id),
+  CONSTRAINT fk_lendings_user FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT fk_lendings_approved_by FOREIGN KEY (approved_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.locations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL UNIQUE,
+  building character varying,
+  floor character varying,
+  room character varying,
+  shelf character varying,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT locations_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.reviews (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  donation_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment text,
+  helpful_count integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at timestamp with time zone,
+  CONSTRAINT reviews_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_reviews_donation FOREIGN KEY (donation_id) REFERENCES public.donations(id),
+  CONSTRAINT fk_reviews_user FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.sub_categories (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  category_id uuid NOT NULL,
+  name character varying NOT NULL,
+  description text,
+  display_order integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT sub_categories_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_sub_categories_category FOREIGN KEY (category_id) REFERENCES public.categories(id)
+);
+CREATE TABLE public.tags (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL UNIQUE,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT tags_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email character varying NOT NULL UNIQUE,
+  name character varying NOT NULL,
+  role character varying NOT NULL DEFAULT 'user'::character varying CHECK (role::text = ANY (ARRAY['user'::character varying, 'admin'::character varying, 'system'::character varying]::text[])),
+  avatar_url character varying,
+  department character varying,
+  is_active boolean NOT NULL DEFAULT true,
+  last_login_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at timestamp with time zone,
+  CONSTRAINT users_pkey PRIMARY KEY (id)
+);

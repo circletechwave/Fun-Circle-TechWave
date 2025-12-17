@@ -3,10 +3,18 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import AuthComponent from './components/Auth'
 import DonationSearch from './components/DonationSearch'
+import DonationForm from './components/DonationForm'
+import type { Donation } from './types/donation'
+import { donationApi } from './services/donationApi'
 import './App.css'
+
+import DonationDetail from './components/DonationDetail'
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
+  const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'detail'>('list')
+  const [selectedDonation, setSelectedDonation] = useState<Donation | undefined>(undefined)
+  const [selectedDonationId, setSelectedDonationId] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -21,6 +29,53 @@ function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  const handleAdd = () => {
+    setSelectedDonation(undefined)
+    setCurrentView('create')
+  }
+
+  const handleEdit = (donation: Donation) => {
+    setSelectedDonation(donation)
+    setCurrentView('edit')
+  }
+
+  const handleDetail = (donation: Donation) => {
+    setSelectedDonationId(donation.id)
+    setCurrentView('detail')
+  }
+
+  const handleCancel = () => {
+    setSelectedDonation(undefined)
+    setSelectedDonationId(undefined)
+    setCurrentView('list')
+  }
+
+  const handleSubmit = async (data: Partial<Donation>) => {
+    try {
+      if (currentView === 'create') {
+        await donationApi.createDonation(data)
+      } else if (currentView === 'edit' && selectedDonation) {
+        await donationApi.updateDonation(selectedDonation.id, data)
+      }
+      setCurrentView('list')
+    } catch (error) {
+      console.error('Failed to save donation:', error)
+      alert('保存に失敗しました')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (selectedDonation) {
+      try {
+        await donationApi.deleteDonation(selectedDonation.id)
+        setCurrentView('list')
+      } catch (error) {
+        console.error('Failed to delete donation:', error)
+        alert('削除に失敗しました')
+      }
+    }
+  }
 
   return (
     <div className="App">
@@ -43,7 +98,26 @@ function App() {
             </div>
           </header>
           <main className="app-main">
-            <DonationSearch />
+            {currentView === 'list' ? (
+              <DonationSearch
+                onCreate={handleAdd}
+                onDetail={handleDetail}
+              />
+            ) : currentView === 'detail' && selectedDonationId ? (
+              <DonationDetail
+                donationId={selectedDonationId}
+                onBack={handleCancel}
+                onEdit={(donation) => handleEdit(donation)}
+              />
+            ) : (
+              <DonationForm
+                mode={currentView as 'create' | 'edit'}
+                initialData={selectedDonation}
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                onDelete={currentView === 'edit' ? handleDelete : undefined}
+              />
+            )}
           </main>
         </div>
       )}

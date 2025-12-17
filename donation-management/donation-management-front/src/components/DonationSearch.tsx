@@ -12,7 +12,12 @@ const DEFAULT_FILTERS: SearchFilters = {
   per_page: 20,
 };
 
-export default function DonationSearch() {
+interface DonationSearchProps {
+  onCreate?: () => void;
+  onDetail?: (donation: Donation) => void;
+}
+
+export default function DonationSearch({ onCreate, onDetail }: DonationSearchProps) {
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
   const [donations, setDonations] = useState<Donation[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -30,7 +35,7 @@ export default function DonationSearch() {
 
     try {
       const result = await donationApi.searchDonations(searchFilters);
-      
+
       if (result.success) {
         setDonations(result.data);
         setPagination(result.pagination);
@@ -76,20 +81,38 @@ export default function DonationSearch() {
     <div className="donation-search">
       <div className="search-header">
         <h1>寄贈物検索</h1>
-        <p>社内に寄贈された書籍・備品を検索できます</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ margin: 0 }}>社内に寄贈された書籍・備品を検索できます</p>
+          <button
+            onClick={onCreate}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '14px'
+            }}
+          >
+            ＋ 新規登録
+          </button>
+        </div>
       </div>
 
-      <SearchFilter 
-        filters={filters} 
+      <SearchFilter
+        filters={filters}
         onFiltersChange={handleFiltersChange}
       />
-      
+
       <DonationList
         donations={donations}
         pagination={pagination}
         loading={loading}
         error={error}
         onPageChange={handlePageChange}
+        onDetail={onDetail}
       />
     </div>
   );
