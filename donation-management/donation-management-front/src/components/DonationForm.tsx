@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Donation, Category, Location } from '../types/donation';
+import type { Donation, Category, Location, Tag } from '../types/donation';
 import { donationApi } from '../services/donationApi';
 
 interface DonationFormProps {
@@ -20,6 +20,8 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
         condition: 'good',
         description: '',
         image_url: '',
+        image_urls: [],
+        tags: [],
         donor_name: '',
         donated_date: new Date().toISOString().split('T')[0],
         isbn: '',
@@ -32,16 +34,19 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     const [categories, setCategories] = useState<Category[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
+    const [tags, setTags] = useState<Tag[]>([]);
 
     useEffect(() => {
         const loadMasterData = async () => {
             try {
-                const [categoriesRes, locationsRes] = await Promise.all([
+                const [categoriesRes, locationsRes, tagsRes] = await Promise.all([
                     donationApi.getCategories(),
-                    donationApi.getLocations()
+                    donationApi.getLocations(),
+                    donationApi.getTags()
                 ]);
                 if (categoriesRes.success) setCategories(categoriesRes.data);
                 if (locationsRes.success) setLocations(locationsRes.data);
+                if (tagsRes.success) setTags(tagsRes.data);
             } catch (error) {
                 console.error('Failed to load master data:', error);
             }
@@ -51,7 +56,12 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     useEffect(() => {
         if (mode === 'edit' && initialData) {
-            setFormData(initialData);
+            setFormData({
+                ...initialData,
+                // Ensure arrays are initialized
+                image_urls: initialData.image_urls || (initialData.image_url ? [initialData.image_url] : []),
+                tags: initialData.tags || []
+            });
         }
     }, [mode, initialData]);
 
@@ -62,7 +72,12 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit(formData);
+        // Sync image_url with the first image in image_urls for backward compatibility
+        const firstImage = formData.image_urls && formData.image_urls.length > 0 ? formData.image_urls[0] : '';
+        onSubmit({
+            ...formData,
+            image_url: firstImage
+        });
     };
 
     const selectedCategory = categories.find(c => c.id === formData.category_id);
@@ -179,14 +194,66 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>画像URL</label>
-                    <input
-                        type="text"
-                        name="image_url"
-                        value={formData.image_url || ''}
-                        onChange={handleChange}
-                        placeholder="https://example.com/image.jpg"
-                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
+                    {(formData.image_urls || []).map((url, index) => (
+                        <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                            <input
+                                type="text"
+                                value={url}
+                                onChange={(e) => {
+                                    const newUrls = [...(formData.image_urls || [])];
+                                    newUrls[index] = e.target.value;
+                                    setFormData(prev => ({ ...prev, image_urls: newUrls }));
+                                }}
+                                placeholder="https://example.com/image.jpg"
+                                style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const newUrls = (formData.image_urls || []).filter((_, i) => i !== index);
+                                    setFormData(prev => ({ ...prev, image_urls: newUrls }));
+                                }}
+                                style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                                削除
+                            </button>
+                        </div>
+                    ))}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFormData(prev => ({ ...prev, image_urls: [...(prev.image_urls || []), ''] }));
+                        }}
+                        style={{ padding: '8px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                        画像を追加
+                    </button>
+                </div>
+
+                <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>タグ</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '10px', border: '1px solid #eee', borderRadius: '4px' }}>
+                        {tags.map(tag => (
+                            <label key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', padding: '4px 8px', backgroundColor: '#f8f9fa', borderRadius: '16px', border: '1px solid #ddd' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={formData.tags?.some(t => t.id === tag.id) || false}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        setFormData(prev => {
+                                            const currentTags = prev.tags || [];
+                                            if (checked) {
+                                                return { ...prev, tags: [...currentTags, tag] };
+                                            } else {
+                                                return { ...prev, tags: currentTags.filter(t => t.id !== tag.id) };
+                                            }
+                                        });
+                                    }}
+                                />
+                                {tag.name}
+                            </label>
+                        ))}
+                    </div>
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>

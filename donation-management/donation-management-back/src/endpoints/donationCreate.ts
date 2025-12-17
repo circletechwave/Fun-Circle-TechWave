@@ -22,6 +22,8 @@ export class DonationCreate extends OpenAPIRoute {
                             donor_name: z.string().optional(),
                             donated_date: z.string(),
                             image_url: z.string().optional(),
+                            image_urls: z.array(z.string()).optional(),
+                            tags: z.array(z.string()).optional(),
                         }),
                     },
                 },
@@ -79,12 +81,27 @@ export class DonationCreate extends OpenAPIRoute {
             }, { status: 500 });
         }
 
-        if (donation.image_url) {
+        if (donation.image_urls && donation.image_urls.length > 0) {
+            const imagesToInsert = donation.image_urls.map((url, index) => ({
+                donation_id: newDonation.id,
+                image_url: url,
+                display_order: index + 1
+            }));
+            await supabase.from('donation_images').insert(imagesToInsert);
+        } else if (donation.image_url) {
             await supabase.from('donation_images').insert({
                 donation_id: newDonation.id,
                 image_url: donation.image_url,
                 display_order: 1
             });
+        }
+
+        if (donation.tags && donation.tags.length > 0) {
+            const tagsToInsert = donation.tags.map(tagId => ({
+                donation_id: newDonation.id,
+                tag_id: tagId
+            }));
+            await supabase.from('donation_tags').insert(tagsToInsert);
         }
 
         return c.json({

@@ -57,17 +57,30 @@ export default function DonationDetail({ donationId, onBack, onEdit }: DonationD
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
                     <div>
-                        {donation.image_url ? (
-                            <img
-                                src={donation.image_url}
-                                alt={donation.title}
-                                style={{ width: '100%', borderRadius: '8px', objectFit: 'cover' }}
-                            />
-                        ) : (
-                            <div style={{ width: '100%', height: '300px', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', color: '#888' }}>
-                                No Image
-                            </div>
-                        )}
+                        <div>
+                            {donation.image_urls && donation.image_urls.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    {donation.image_urls.map((url, index) => (
+                                        <img
+                                            key={index}
+                                            src={url}
+                                            alt={`${donation.title} - ${index + 1}`}
+                                            style={{ width: '100%', borderRadius: '8px', objectFit: 'cover' }}
+                                        />
+                                    ))}
+                                </div>
+                            ) : donation.image_url ? (
+                                <img
+                                    src={donation.image_url}
+                                    alt={donation.title}
+                                    style={{ width: '100%', borderRadius: '8px', objectFit: 'cover' }}
+                                />
+                            ) : (
+                                <div style={{ width: '100%', height: '300px', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', color: '#888' }}>
+                                    No Image
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div>
@@ -92,6 +105,15 @@ export default function DonationDetail({ donationId, onBack, onEdit }: DonationD
                             <div style={{ color: '#666', fontSize: '14px' }}>
                                 保管場所: {donation.location?.name}
                             </div>
+                            {donation.tags && donation.tags.length > 0 && (
+                                <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                                    {donation.tags.map(tag => (
+                                        <span key={tag.id} style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: '#e9ecef', borderRadius: '12px', color: '#495057' }}>
+                                            {tag.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div style={{ marginBottom: '20px' }}>

@@ -25,6 +25,8 @@ export class DonationUpdate extends OpenAPIRoute {
                             donor_name: z.string().optional(),
                             donated_date: z.string().optional(),
                             image_url: z.string().optional(),
+                            image_urls: z.array(z.string()).optional(),
+                            tags: z.array(z.string()).optional(),
                         }),
                     },
                 },
@@ -56,8 +58,8 @@ export class DonationUpdate extends OpenAPIRoute {
         const donation = data.body;
         const supabase = createSupabaseClient(c.env);
 
-        // Remove image_url from donation object before updating donations table
-        const { image_url, ...updateData } = donation;
+        // Remove image_url, image_urls, tags from donation object before updating donations table
+        const { image_url, image_urls, tags, ...updateData } = donation;
 
         const { data: updatedDonation, error } = await supabase
             .from('donations')
@@ -73,7 +75,20 @@ export class DonationUpdate extends OpenAPIRoute {
             }, { status: 500 });
         }
 
-        if (image_url) {
+        if (image_urls) {
+            // Delete existing images
+            await supabase.from('donation_images').delete().eq('donation_id', id);
+
+            // Insert new images
+            if (image_urls.length > 0) {
+                const imagesToInsert = image_urls.map((url, index) => ({
+                    donation_id: id,
+                    image_url: url,
+                    display_order: index + 1
+                }));
+                await supabase.from('donation_images').insert(imagesToInsert);
+            }
+        } else if (image_url) {
             // Check if image exists
             const { data: existingImages } = await supabase
                 .from('donation_images')
@@ -94,6 +109,20 @@ export class DonationUpdate extends OpenAPIRoute {
                         image_url,
                         display_order: 1
                     });
+            }
+        }
+
+        if (tags) {
+            // Delete existing tags
+            await supabase.from('donation_tags').delete().eq('donation_id', id);
+
+            // Insert new tags
+            if (tags.length > 0) {
+                const tagsToInsert = tags.map(tagId => ({
+                    donation_id: id,
+                    tag_id: tagId
+                }));
+                await supabase.from('donation_tags').insert(tagsToInsert);
             }
         }
 

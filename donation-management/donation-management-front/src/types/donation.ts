@@ -34,6 +34,7 @@ export interface Donation {
   avg_rating?: number;
   review_count?: number;
   image_urls?: string[];
+  tags?: Tag[];
   created_at?: string;
   updated_at?: string;
 }
@@ -51,6 +52,11 @@ export interface SubCategory {
   name: string;
   description?: string;
   display_order: number;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
 }
 
 export interface Location {

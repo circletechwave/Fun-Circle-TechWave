@@ -49,6 +49,11 @@ export class DonationFetch extends OpenAPIRoute {
                                 manufacturer: z.string().optional(),
                                 model_number: z.string().optional(),
                                 image_url: z.string().optional(),
+                                image_urls: z.array(z.string()).optional(),
+                                tags: z.array(z.object({
+                                    id: z.string(),
+                                    name: z.string(),
+                                })).optional(),
                                 created_at: z.string(),
                                 updated_at: z.string(),
                             }),
@@ -73,7 +78,9 @@ export class DonationFetch extends OpenAPIRoute {
 				*,
 				categories!inner(id, name),
 				sub_categories(id, name),
-				locations!inner(id, name)
+				locations!inner(id, name),
+                donation_images(id, image_url, display_order),
+                donation_tags(tag_id, tags(id, name))
 			`)
             .eq('id', id)
             .is('deleted_at', null)
@@ -85,6 +92,9 @@ export class DonationFetch extends OpenAPIRoute {
                 error: "Donation not found",
             }, { status: 404 });
         }
+
+        const sortedImages = donation.donation_images?.sort((a: any, b: any) => a.display_order - b.display_order) || [];
+        const imageUrls = sortedImages.map((img: any) => img.image_url);
 
         const transformedData = {
             id: donation.id,
@@ -115,8 +125,12 @@ export class DonationFetch extends OpenAPIRoute {
             published_year: donation.published_year,
             manufacturer: donation.manufacturer,
             model_number: donation.model_number,
-            // TODO: Fetch image URL from donation_images table
-            image_url: undefined,
+            image_url: imageUrls.length > 0 ? imageUrls[0] : undefined,
+            image_urls: imageUrls,
+            tags: donation.donation_tags?.map((dt: any) => ({
+                id: dt.tags.id,
+                name: dt.tags.name
+            })) || [],
             created_at: donation.created_at,
             updated_at: donation.updated_at,
         };

@@ -12,6 +12,7 @@ import { DonationUpdate } from "./endpoints/donationUpdate";
 import { DonationDelete } from "./endpoints/donationDelete";
 import { CategoryList } from "./endpoints/categoryList";
 import { LocationList } from "./endpoints/locationList";
+import { TagList } from "./endpoints/tagList";
 
 // Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
@@ -39,6 +40,7 @@ openapi.delete("/api/donations/:id", DonationDelete);
 
 openapi.get("/api/categories", CategoryList);
 openapi.get("/api/locations", LocationList);
+openapi.get("/api/tags", TagList);
 
 // You may also register routes for non OpenAPI directly on Hono
 // app.get('/test', (c) => c.text('Hono!'))
