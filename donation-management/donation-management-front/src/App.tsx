@@ -101,7 +101,6 @@ function App() {
             {currentView === 'list' ? (
               <DonationSearch
                 onCreate={handleAdd}
-                onEdit={handleEdit}
                 onDetail={handleDetail}
               />
             ) : currentView === 'detail' && selectedDonationId ? (

@@ -14,11 +14,10 @@ const DEFAULT_FILTERS: SearchFilters = {
 
 interface DonationSearchProps {
   onCreate?: () => void;
-  onEdit?: (donation: Donation) => void;
   onDetail?: (donation: Donation) => void;
 }
 
-export default function DonationSearch({ onCreate, onEdit, onDetail }: DonationSearchProps) {
+export default function DonationSearch({ onCreate, onDetail }: DonationSearchProps) {
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
   const [donations, setDonations] = useState<Donation[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
