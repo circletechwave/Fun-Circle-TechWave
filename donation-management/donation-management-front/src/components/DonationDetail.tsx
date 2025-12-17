@@ -22,7 +22,7 @@ export default function DonationDetail({ donationId, onBack, onEdit }: DonationD
                 } else {
                     setError(result.error || '詳細の取得に失敗しました');
                 }
-            } catch (err) {
+            } catch {
                 setError('エラーが発生しました');
             } finally {
                 setLoading(false);

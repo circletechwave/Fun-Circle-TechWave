@@ -73,6 +73,7 @@ export const donationApi = {
       if (error) throw error;
 
       // Transform data to match Donation interface
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const donations: Donation[] = (data || []).map((item: any) => ({
         ...item,
         category: item.categories,
@@ -146,6 +147,7 @@ export const donationApi = {
         category, sub_category, location,
         id, created_at, updated_at,
         ...insertData
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } = donation as any;
 
       // Add created_by (using current user if available, otherwise dummy)
@@ -175,6 +177,7 @@ export const donationApi = {
         category, sub_category, location,
         id: _id, created_at, updated_at,
         ...updateData
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } = donation as any;
 
       const { data, error } = await supabase

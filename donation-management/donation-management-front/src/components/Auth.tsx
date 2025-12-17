@@ -176,7 +176,7 @@ export default function AuthComponent() {
                 password: 'password',
               });
               if (error) throw error;
-            } catch (error) {
+            } catch {
               // If sign in fails, try to sign up (for dev convenience)
               try {
                 const { error: signUpError } = await supabase.auth.signUp({
@@ -185,8 +185,8 @@ export default function AuthComponent() {
                 });
                 if (signUpError) throw signUpError;
                 setMessage('開発用ユーザーを作成しました。もう一度クリックしてください。');
-              } catch (e) {
-                const errorMessage = error instanceof Error ? error.message : 'エラーが発生しました';
+              } catch (signUpError) {
+                const errorMessage = signUpError instanceof Error ? signUpError.message : 'エラーが発生しました';
                 setMessage(errorMessage);
               }
             } finally {
