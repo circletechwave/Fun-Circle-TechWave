@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
-import type { Donation, Category, Location, Tag } from '../types/donation';
-import { donationApi } from '../services/donationApi';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { Donation, Tag } from '../types/donation';
+import { donationFormSchema, type DonationFormData } from '../lib/validation';
+import { useCategories, useLocations, useTags } from '../hooks/useMasterData';
 
 interface DonationFormProps {
     mode: 'create' | 'edit';
@@ -11,105 +14,110 @@ interface DonationFormProps {
 }
 
 export default function DonationForm({ mode, initialData, onSubmit, onCancel, onDelete }: DonationFormProps) {
-    const [formData, setFormData] = useState<Partial<Donation>>({
-        title: '',
-        category_id: '',
-        sub_category_id: '',
-        location_id: '',
-        status: 'available',
-        condition: 'good',
-        description: '',
-        image_url: '',
-        image_urls: [],
-        tags: [],
-        donor_name: '',
-        donated_date: new Date().toISOString().split('T')[0],
-        isbn: '',
-        author: '',
-        publisher: '',
-        published_year: undefined,
-        manufacturer: '',
-        model_number: '',
+    // React Queryでマスターデータを取得
+    const { data: categoriesResult } = useCategories();
+    const { data: locationsResult } = useLocations();
+    const { data: tagsResult } = useTags();
+
+    const categories = categoriesResult?.data || [];
+    const locations = locationsResult?.data || [];
+    const tags = tagsResult?.data || [];
+
+    // 画像URLとタグの管理用ステート（配列フィールドはreact-hook-formで管理が複雑なため）
+    const [imageUrls, setImageUrls] = useState<string[]>([]);
+    const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+
+    // React Hook Form + Zodバリデーション
+    const {
+        register,
+        handleSubmit: handleFormSubmit,
+        formState: { errors, isSubmitting },
+        watch,
+        setValue,
+    } = useForm<DonationFormData>({
+        resolver: zodResolver(donationFormSchema),
+        defaultValues: {
+            title: '',
+            category_id: '',
+            sub_category_id: '',
+            location_id: '',
+            status: 'available',
+            condition: 'good',
+            description: '',
+            donor_name: '',
+            donated_date: new Date().toISOString().split('T')[0],
+            isbn: '',
+            author: '',
+            publisher: '',
+            published_year: 0,
+            manufacturer: '',
+            model_number: '',
+        },
     });
 
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [locations, setLocations] = useState<Location[]>([]);
-    const [tags, setTags] = useState<Tag[]>([]);
-
-    useEffect(() => {
-        const loadMasterData = async () => {
-            try {
-                const [categoriesRes, locationsRes, tagsRes] = await Promise.all([
-                    donationApi.getCategories(),
-                    donationApi.getLocations(),
-                    donationApi.getTags()
-                ]);
-                if (categoriesRes.success) setCategories(categoriesRes.data);
-                if (locationsRes.success) setLocations(locationsRes.data);
-                if (tagsRes.success) setTags(tagsRes.data);
-            } catch (error) {
-                if (import.meta.env.DEV) {
-                    console.error('Failed to load master data:', error);
-                }
-            }
-        };
-        loadMasterData();
-    }, []);
-
+    // 編集モードの場合、初期データをセット
     useEffect(() => {
         if (mode === 'edit' && initialData) {
-            setFormData({
-                ...initialData,
-                // Ensure arrays are initialized
-                image_urls: initialData.image_urls || (initialData.image_url ? [initialData.image_url] : []),
-                tags: initialData.tags || []
-            });
+            setValue('title', initialData.title || '');
+            setValue('category_id', initialData.category_id || '');
+            setValue('sub_category_id', initialData.sub_category_id || '');
+            setValue('location_id', initialData.location_id || '');
+            setValue('status', initialData.status || 'available');
+            setValue('condition', initialData.condition || '');
+            setValue('description', initialData.description || '');
+            setValue('donor_name', initialData.donor_name || '');
+            setValue('donated_date', initialData.donated_date || '');
+            setValue('isbn', initialData.isbn || '');
+            setValue('author', initialData.author || '');
+            setValue('publisher', initialData.publisher || '');
+            setValue('published_year', initialData.published_year || 0);
+            setValue('manufacturer', initialData.manufacturer || '');
+            setValue('model_number', initialData.model_number || '');
+
+            setImageUrls(initialData.image_urls || (initialData.image_url ? [initialData.image_url] : []));
+            setSelectedTags(initialData.tags || []);
         }
-    }, [mode, initialData]);
+    }, [mode, initialData, setValue]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Sync image_url with the first image in image_urls for backward compatibility
-        const firstImage = formData.image_urls && formData.image_urls.length > 0 ? formData.image_urls[0] : '';
+    // フォーム送信ハンドラー
+    const onFormSubmit = (data: DonationFormData) => {
+        // 画像URLの配列を追加
+        const firstImage = imageUrls.length > 0 ? imageUrls[0] : '';
         onSubmit({
-            ...formData,
-            image_url: firstImage
+            ...data,
+            image_url: firstImage,
+            image_urls: imageUrls,
+            tags: selectedTags,
         });
     };
 
-    const selectedCategory = categories.find(c => c.id === formData.category_id);
+    // カテゴリ変更の監視
+    const watchedCategoryId = watch('category_id');
+    const selectedCategory = categories.find(c => c.id === watchedCategoryId);
     const subCategories = selectedCategory?.sub_categories || [];
 
     return (
         <div className="donation-form-container" style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <h2>{mode === 'create' ? '新規寄贈登録' : '寄贈物編集'}</h2>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleFormSubmit(onFormSubmit)}>
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>タイトル *</label>
                     <input
                         type="text"
-                        name="title"
-                        value={formData.title}
-                        onChange={handleChange}
-                        required
+                        {...register('title')}
                         style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                     />
+                    {errors.title && (
+                        <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.title.message}</p>
+                    )}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>カテゴリ *</label>
                         <select
-                            name="category_id"
-                            value={formData.category_id}
-                            onChange={handleChange}
-                            required
+                            {...register('category_id')}
                             style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                         >
                             <option value="">選択してください</option>
@@ -117,14 +125,15 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </select>
+                        {errors.category_id && (
+                            <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.category_id.message}</p>
+                        )}
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>サブカテゴリ</label>
                         <select
-                            name="sub_category_id"
-                            value={formData.sub_category_id || ''}
-                            onChange={handleChange}
-                            disabled={!formData.category_id}
+                            {...register('sub_category_id')}
+                            disabled={!watchedCategoryId}
                             style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                         >
                             <option value="">選択してください</option>
@@ -138,10 +147,7 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>保管場所 *</label>
                     <select
-                        name="location_id"
-                        value={formData.location_id}
-                        onChange={handleChange}
-                        required
+                        {...register('location_id')}
                         style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                     >
                         <option value="">選択してください</option>
@@ -149,16 +155,16 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                             <option key={l.id} value={l.id}>{l.name}</option>
                         ))}
                     </select>
+                    {errors.location_id && (
+                        <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.location_id.message}</p>
+                    )}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>状態 *</label>
                         <select
-                            name="status"
-                            value={formData.status}
-                            onChange={handleChange}
-                            required
+                            {...register('status')}
                             style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                         >
                             <option value="available">利用可能</option>
@@ -166,15 +172,17 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                             <option value="maintenance">メンテナンス中</option>
                             <option value="lost">紛失</option>
                         </select>
+                        {errors.status && (
+                            <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.status.message}</p>
+                        )}
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>コンディション</label>
                         <select
-                            name="condition"
-                            value={formData.condition}
-                            onChange={handleChange}
+                            {...register('condition')}
                             style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                         >
+                            <option value="">選択してください</option>
                             <option value="new">新品同様</option>
                             <option value="good">良</option>
                             <option value="fair">可</option>
@@ -186,25 +194,26 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>説明</label>
                     <textarea
-                        name="description"
-                        value={formData.description || ''}
-                        onChange={handleChange}
+                        {...register('description')}
                         rows={4}
                         style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                     />
+                    {errors.description && (
+                        <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.description.message}</p>
+                    )}
                 </div>
 
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>画像URL</label>
-                    {(formData.image_urls || []).map((url, index) => (
+                    {imageUrls.map((url, index) => (
                         <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                             <input
                                 type="text"
                                 value={url}
                                 onChange={(e) => {
-                                    const newUrls = [...(formData.image_urls || [])];
+                                    const newUrls = [...imageUrls];
                                     newUrls[index] = e.target.value;
-                                    setFormData(prev => ({ ...prev, image_urls: newUrls }));
+                                    setImageUrls(newUrls);
                                 }}
                                 placeholder="https://example.com/image.jpg"
                                 style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
@@ -212,8 +221,8 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                             <button
                                 type="button"
                                 onClick={() => {
-                                    const newUrls = (formData.image_urls || []).filter((_, i) => i !== index);
-                                    setFormData(prev => ({ ...prev, image_urls: newUrls }));
+                                    const newUrls = imageUrls.filter((_, i) => i !== index);
+                                    setImageUrls(newUrls);
                                 }}
                                 style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                             >
@@ -224,7 +233,7 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                     <button
                         type="button"
                         onClick={() => {
-                            setFormData(prev => ({ ...prev, image_urls: [...(prev.image_urls || []), ''] }));
+                            setImageUrls([...imageUrls, '']);
                         }}
                         style={{ padding: '8px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                     >
@@ -239,17 +248,14 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                             <label key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', padding: '4px 8px', backgroundColor: '#f8f9fa', borderRadius: '16px', border: '1px solid #ddd' }}>
                                 <input
                                     type="checkbox"
-                                    checked={formData.tags?.some(t => t.id === tag.id) || false}
+                                    checked={selectedTags.some(t => t.id === tag.id)}
                                     onChange={(e) => {
                                         const checked = e.target.checked;
-                                        setFormData(prev => {
-                                            const currentTags = prev.tags || [];
-                                            if (checked) {
-                                                return { ...prev, tags: [...currentTags, tag] };
-                                            } else {
-                                                return { ...prev, tags: currentTags.filter(t => t.id !== tag.id) };
-                                            }
-                                        });
+                                        if (checked) {
+                                            setSelectedTags([...selectedTags, tag]);
+                                        } else {
+                                            setSelectedTags(selectedTags.filter(t => t.id !== tag.id));
+                                        }
                                     }}
                                 />
                                 {tag.name}
@@ -265,41 +271,45 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>著者</label>
                             <input
                                 type="text"
-                                name="author"
-                                value={formData.author || ''}
-                                onChange={handleChange}
+                                {...register('author')}
                                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                             />
+                            {errors.author && (
+                                <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.author.message}</p>
+                            )}
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>出版社</label>
                             <input
                                 type="text"
-                                name="publisher"
-                                value={formData.publisher || ''}
-                                onChange={handleChange}
+                                {...register('publisher')}
                                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                             />
+                            {errors.publisher && (
+                                <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.publisher.message}</p>
+                            )}
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>出版年</label>
                             <input
                                 type="number"
-                                name="published_year"
-                                value={formData.published_year || ''}
-                                onChange={handleChange}
+                                {...register('published_year', { valueAsNumber: true })}
                                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                             />
+                            {errors.published_year && (
+                                <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.published_year.message}</p>
+                            )}
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>ISBN</label>
                             <input
                                 type="text"
-                                name="isbn"
-                                value={formData.isbn || ''}
-                                onChange={handleChange}
+                                {...register('isbn')}
                                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                             />
+                            {errors.isbn && (
+                                <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.isbn.message}</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -311,21 +321,23 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>メーカー</label>
                             <input
                                 type="text"
-                                name="manufacturer"
-                                value={formData.manufacturer || ''}
-                                onChange={handleChange}
+                                {...register('manufacturer')}
                                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                             />
+                            {errors.manufacturer && (
+                                <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.manufacturer.message}</p>
+                            )}
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>型番</label>
                             <input
                                 type="text"
-                                name="model_number"
-                                value={formData.model_number || ''}
-                                onChange={handleChange}
+                                {...register('model_number')}
                                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                             />
+                            {errors.model_number && (
+                                <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.model_number.message}</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -335,21 +347,23 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                         <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>寄贈者名</label>
                         <input
                             type="text"
-                            name="donor_name"
-                            value={formData.donor_name || ''}
-                            onChange={handleChange}
+                            {...register('donor_name')}
                             style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                         />
+                        {errors.donor_name && (
+                            <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.donor_name.message}</p>
+                        )}
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>寄贈日</label>
+                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>寄贈日 *</label>
                         <input
                             type="date"
-                            name="donated_date"
-                            value={formData.donated_date}
-                            onChange={handleChange}
+                            {...register('donated_date')}
                             style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                         />
+                        {errors.donated_date && (
+                            <p style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.donated_date.message}</p>
+                        )}
                     </div>
                 </div>
 
@@ -378,9 +392,10 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                         </button>
                         <button
                             type="submit"
-                            style={{ padding: '10px 20px', backgroundColor: '#0d6efd', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            disabled={isSubmitting}
+                            style={{ padding: '10px 20px', backgroundColor: isSubmitting ? '#6c757d' : '#0d6efd', color: 'white', border: 'none', borderRadius: '4px', cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
                         >
-                            {mode === 'create' ? '登録する' : '更新する'}
+                            {isSubmitting ? '処理中...' : mode === 'create' ? '登録する' : '更新する'}
                         </button>
                     </div>
                 </div>
