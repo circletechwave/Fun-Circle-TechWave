@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { supabase } from './lib/supabase'
+import { queryClient } from './lib/queryClient'
 import AuthComponent from './components/Auth'
 import DonationSearch from './components/DonationSearch'
 import DonationForm from './components/DonationForm'
@@ -10,7 +12,7 @@ import './App.css'
 
 import DonationDetail from './components/DonationDetail'
 
-function App() {
+function AppContent() {
   const [session, setSession] = useState<Session | null>(null)
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'detail'>('list')
   const [selectedDonation, setSelectedDonation] = useState<Donation | undefined>(undefined)
@@ -126,6 +128,20 @@ function App() {
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Appコンポーネント
+ *
+ * React QueryのQueryClientProviderでアプリケーション全体をラップし、
+ * データフェッチングのキャッシュ管理を提供します。
+ */
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
+    </QueryClientProvider>
   )
 }
 

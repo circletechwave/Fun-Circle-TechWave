@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import type { Category, Location, SearchFilters } from '../types/donation';
-import { donationApi } from '../services/donationApi';
+import type { SearchFilters } from '../types/donation';
+import { useCategories, useLocations } from '../hooks/useMasterData';
 import './SearchFilter.css';
 
 interface SearchFilterProps {
@@ -9,36 +8,14 @@ interface SearchFilterProps {
 }
 
 export default function SearchFilter({ filters, onFiltersChange }: SearchFilterProps) {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [loading, setLoading] = useState(true);
+  // React Queryでマスターデータを取得
+  const { data: categoriesResult, isLoading: categoriesLoading } = useCategories();
+  const { data: locationsResult, isLoading: locationsLoading } = useLocations();
 
-  useEffect(() => {
-    const loadFilterData = async () => {
-      try {
-        const [categoriesResult, locationsResult] = await Promise.all([
-          donationApi.getCategories(),
-          donationApi.getLocations(),
-        ]);
-
-        if (categoriesResult.success) {
-          setCategories(categoriesResult.data);
-        }
-
-        if (locationsResult.success) {
-          setLocations(locationsResult.data);
-        }
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Failed to load filter data:', error);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadFilterData();
-  }, []);
+  // データとローディング状態を抽出
+  const categories = categoriesResult?.data || [];
+  const locations = locationsResult?.data || [];
+  const loading = categoriesLoading || locationsLoading;
 
   const handleInputChange = (field: keyof SearchFilters, value: SearchFilters[keyof SearchFilters]) => {
     const newFilters = { ...filters, [field]: value };
