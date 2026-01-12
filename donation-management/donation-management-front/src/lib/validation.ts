@@ -5,6 +5,9 @@ import { z } from 'zod';
  *
  * Zodを使用してフォーム入力のバリデーションルールを定義します。
  * React Hook Formと統合して使用されます。
+ *
+ * Note: オプショナルフィールドは空文字列を許可します。
+ * フォーム送信時に空文字列はundefinedに変換されます。
  */
 export const donationFormSchema = z.object({
   // 基本情報
@@ -13,28 +16,26 @@ export const donationFormSchema = z.object({
     .max(255, '255文字以内で入力してください'),
 
   category_id: z.string()
+    .min(1, 'カテゴリを選択してください')
     .uuid('カテゴリを選択してください'),
 
-  sub_category_id: z.string().uuid().optional().or(z.literal('')),
+  sub_category_id: z.string().optional(),
 
   location_id: z.string()
+    .min(1, '保管場所を選択してください')
     .uuid('保管場所を選択してください'),
 
-  status: z.enum(['available', 'lending', 'maintenance', 'lost'], {
-    required_error: 'ステータスを選択してください',
-  }),
+  status: z.enum(['available', 'lending', 'maintenance', 'lost']),
 
-  condition: z.enum(['new', 'good', 'fair', 'poor']).optional().or(z.literal('')),
+  condition: z.string().optional(),
 
   description: z.string()
     .max(2000, '2000文字以内で入力してください')
-    .optional()
-    .or(z.literal('')),
+    .optional(),
 
   donor_name: z.string()
     .max(100, '100文字以内で入力してください')
-    .optional()
-    .or(z.literal('')),
+    .optional(),
 
   donated_date: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, '日付形式が正しくありません（YYYY-MM-DD）'),
@@ -51,36 +52,30 @@ export const donationFormSchema = z.object({
   // 書籍情報
   isbn: z.string()
     .max(20, '20文字以内で入力してください')
-    .optional()
-    .or(z.literal('')),
+    .optional(),
 
   author: z.string()
     .max(200, '200文字以内で入力してください')
-    .optional()
-    .or(z.literal('')),
+    .optional(),
 
   publisher: z.string()
     .max(200, '200文字以内で入力してください')
-    .optional()
-    .or(z.literal('')),
+    .optional(),
 
   published_year: z.number()
     .int('整数を入力してください')
     .min(1000, '1000以上の年を入力してください')
     .max(9999, '9999以下の年を入力してください')
-    .optional()
-    .or(z.literal(0)), // 0を許容（空欄として扱う）
+    .optional(),
 
   // 備品情報
   manufacturer: z.string()
     .max(200, '200文字以内で入力してください')
-    .optional()
-    .or(z.literal('')),
+    .optional(),
 
   model_number: z.string()
     .max(100, '100文字以内で入力してください')
-    .optional()
-    .or(z.literal('')),
+    .optional(),
 });
 
 /**

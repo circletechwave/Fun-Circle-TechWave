@@ -42,14 +42,14 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
             sub_category_id: '',
             location_id: '',
             status: 'available',
-            condition: 'good',
+            condition: '',
             description: '',
             donor_name: '',
             donated_date: new Date().toISOString().split('T')[0],
             isbn: '',
             author: '',
             publisher: '',
-            published_year: 0,
+            published_year: undefined,
             manufacturer: '',
             model_number: '',
         },
@@ -60,19 +60,19 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
         if (mode === 'edit' && initialData) {
             setValue('title', initialData.title || '');
             setValue('category_id', initialData.category_id || '');
-            setValue('sub_category_id', initialData.sub_category_id || '');
+            setValue('sub_category_id', initialData.sub_category_id);
             setValue('location_id', initialData.location_id || '');
             setValue('status', initialData.status || 'available');
-            setValue('condition', initialData.condition || '');
-            setValue('description', initialData.description || '');
-            setValue('donor_name', initialData.donor_name || '');
+            setValue('condition', initialData.condition);
+            setValue('description', initialData.description);
+            setValue('donor_name', initialData.donor_name);
             setValue('donated_date', initialData.donated_date || '');
-            setValue('isbn', initialData.isbn || '');
-            setValue('author', initialData.author || '');
-            setValue('publisher', initialData.publisher || '');
-            setValue('published_year', initialData.published_year || 0);
-            setValue('manufacturer', initialData.manufacturer || '');
-            setValue('model_number', initialData.model_number || '');
+            setValue('isbn', initialData.isbn);
+            setValue('author', initialData.author);
+            setValue('publisher', initialData.publisher);
+            setValue('published_year', initialData.published_year);
+            setValue('manufacturer', initialData.manufacturer);
+            setValue('model_number', initialData.model_number);
 
             setImageUrls(initialData.image_urls || (initialData.image_url ? [initialData.image_url] : []));
             setSelectedTags(initialData.tags || []);
@@ -81,10 +81,24 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     // フォーム送信ハンドラー
     const onFormSubmit = (data: DonationFormData) => {
+        // 空文字列をundefinedに変換
+        const cleanData = {
+            ...data,
+            sub_category_id: data.sub_category_id || undefined,
+            condition: (data.condition && data.condition !== '') ? data.condition as 'new' | 'good' | 'fair' | 'poor' : undefined,
+            description: data.description || undefined,
+            donor_name: data.donor_name || undefined,
+            isbn: data.isbn || undefined,
+            author: data.author || undefined,
+            publisher: data.publisher || undefined,
+            manufacturer: data.manufacturer || undefined,
+            model_number: data.model_number || undefined,
+        };
+
         // 画像URLの配列を追加
         const firstImage = imageUrls.length > 0 ? imageUrls[0] : '';
         onSubmit({
-            ...data,
+            ...cleanData,
             image_url: firstImage,
             image_urls: imageUrls,
             tags: selectedTags,
