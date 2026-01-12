@@ -1,4 +1,6 @@
 import type { Donation, Category, Location, SearchFilters, PaginationInfo, Tag } from '../types/donation';
+import type { DonationWithRelations } from '../types/supabase-response';
+import { transformDonationResponse } from '../types/supabase-response';
 
 import { supabase } from '../lib/supabase';
 
@@ -82,16 +84,9 @@ export const donationApi = {
       if (error) throw error;
 
       // Transform data to match Donation interface
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const donations: Donation[] = (data || []).map((item: any) => ({
-        ...item,
-        category: item.categories,
-        sub_category: item.sub_categories,
-        location: item.locations,
-        // Ensure arrays are initialized if null
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        image_urls: item.donation_images?.sort((a: any, b: any) => a.display_order - b.display_order).map((img: any) => img.image_url) || [],
-      }));
+      const donations: Donation[] = (data || []).map((item) =>
+        transformDonationResponse(item as DonationWithRelations)
+      );
 
       const total = count || 0;
       const total_pages = Math.ceil(total / per_page);
@@ -136,19 +131,7 @@ export const donationApi = {
 
       if (error) throw error;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const item: any = data;
-      const donation: Donation = {
-        ...item,
-        category: item.categories,
-        sub_category: item.sub_categories,
-        location: item.locations,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        image_urls: item.donation_images?.sort((a: any, b: any) => a.display_order - b.display_order).map((img: any) => img.image_url) || [],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tags: item.donation_tags?.map((dt: any) => dt.tags) || [],
-      };
+      const donation = transformDonationResponse(data as DonationWithRelations);
 
       return { success: true, data: donation };
     } catch (error) {
@@ -166,10 +149,9 @@ export const donationApi = {
       const {
         category, sub_category, location,
         id, created_at, updated_at,
-        image_urls, tags,
+        image_urls, tags, avg_rating, review_count,
         ...insertData
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } = donation as any;
+      } = donation;
 
       // Add created_by (using current user if available, otherwise dummy)
       const { data: { user } } = await supabase.auth.getUser();
@@ -199,8 +181,7 @@ export const donationApi = {
       // Insert tags
       if (tags && tags.length > 0) {
         // tags can be array of strings (IDs) or Tag objects
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tagIds = tags.map((t: any) => typeof t === 'string' ? t : t.id);
+        const tagIds = tags.map((t) => typeof t === 'string' ? t : t.id);
         const tagsToInsert = tagIds.map((tagId: string) => ({
           donation_id: newDonationId,
           tag_id: tagId
@@ -224,10 +205,9 @@ export const donationApi = {
       const {
         category, sub_category, location,
         id: _id, created_at, updated_at,
-        image_urls, tags,
+        image_urls, tags, avg_rating, review_count,
         ...updateData
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } = donation as any;
+      } = donation;
 
       const { data, error } = await supabase
         .from('donations')
@@ -255,8 +235,7 @@ export const donationApi = {
       if (tags) {
         await supabase.from('donation_tags').delete().eq('donation_id', id);
         if (tags.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const tagIds = tags.map((t: any) => typeof t === 'string' ? t : t.id);
+          const tagIds = tags.map((t) => typeof t === 'string' ? t : t.id);
           const tagsToInsert = tagIds.map((tagId: string) => ({
             donation_id: id,
             tag_id: tagId

@@ -1,6 +1,7 @@
 import { Num, OpenAPIRoute, Str } from "chanfana";
 import { z } from "zod";
 import { type AppContext, Donation, Category, SubCategory, Location } from "../types";
+import type { DonationListRow } from "../types/supabase-response";
 import { createSupabaseClient } from "../lib/supabase";
 
 export class DonationList extends OpenAPIRoute {
@@ -177,7 +178,7 @@ export class DonationList extends OpenAPIRoute {
 		}
 
 		// Transform the data
-		const transformedData = donations?.map((donation: any) => ({
+		const transformedData = (donations as DonationListRow[] | null)?.map((donation) => ({
 			id: donation.id,
 			title: donation.title,
 			category: {

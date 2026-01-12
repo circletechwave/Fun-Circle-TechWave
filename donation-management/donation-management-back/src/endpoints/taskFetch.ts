@@ -50,12 +50,11 @@ export class TaskFetch extends OpenAPIRoute {
 		// Retrieve the validated slug
 		const { taskSlug } = data.params;
 
-		// Implement your own object fetch here
+		// TODO: Implement your own object fetch here
+		// 現在はプレースホルダーとして常にtrueを返している
+		const exists: boolean = true;
 
-		const exists = true;
-
-		// @ts-ignore: check if the object exists
-		if (exists === false) {
+		if (!exists) {
 			return Response.json(
 				{
 					success: false,

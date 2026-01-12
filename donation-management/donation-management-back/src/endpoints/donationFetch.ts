@@ -1,6 +1,7 @@
 import { OpenAPIRoute, Str } from "chanfana";
 import { z } from "zod";
 import { type AppContext } from "../types";
+import type { DonationDetailRow, DonationImage } from "../types/supabase-response";
 import { createSupabaseClient } from "../lib/supabase";
 
 export class DonationFetch extends OpenAPIRoute {
@@ -93,8 +94,10 @@ export class DonationFetch extends OpenAPIRoute {
             }, { status: 404 });
         }
 
-        const sortedImages = donation.donation_images?.sort((a: any, b: any) => a.display_order - b.display_order) || [];
-        const imageUrls = sortedImages.map((img: any) => img.image_url);
+        const donationData = donation as DonationDetailRow;
+        const sortedImages = (donationData.donation_images || [])
+            .sort((a, b) => a.display_order - b.display_order);
+        const imageUrls = sortedImages.map(img => img.image_url);
 
         const transformedData = {
             id: donation.id,
@@ -127,7 +130,7 @@ export class DonationFetch extends OpenAPIRoute {
             model_number: donation.model_number,
             image_url: imageUrls.length > 0 ? imageUrls[0] : undefined,
             image_urls: imageUrls,
-            tags: donation.donation_tags?.map((dt: any) => ({
+            tags: donationData.donation_tags?.map((dt) => ({
                 id: dt.tags.id,
                 name: dt.tags.name
             })) || [],
