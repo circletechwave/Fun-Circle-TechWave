@@ -107,7 +107,9 @@ export const donationApi = {
         },
       };
     } catch (error) {
-      console.error('API Error:', error);
+      if (import.meta.env.DEV) {
+        console.error('API Error:', error);
+      }
       return {
         success: false,
         data: [],

@@ -60,7 +60,9 @@ function App() {
       }
       setCurrentView('list')
     } catch (error) {
-      console.error('Failed to save donation:', error)
+      if (import.meta.env.DEV) {
+        console.error('Failed to save donation:', error)
+      }
       alert('保存に失敗しました')
     }
   }
@@ -71,7 +73,9 @@ function App() {
         await donationApi.deleteDonation(selectedDonation.id)
         setCurrentView('list')
       } catch (error) {
-        console.error('Failed to delete donation:', error)
+        if (import.meta.env.DEV) {
+          console.error('Failed to delete donation:', error)
+        }
         alert('削除に失敗しました')
       }
     }

@@ -54,7 +54,12 @@ export class DonationCreate extends OpenAPIRoute {
         const donation = data.body;
         const supabase = createSupabaseClient(c.env);
 
-        // For now, use a dummy user ID for created_by since we don't have auth middleware yet
+        // TODO: [Phase 2] 認証ミドルウェアを実装して、ユーザーIDを取得する
+        // 現在はダミーユーザーIDを使用しているが、本番環境では削除すること
+        // 実装方法:
+        // 1. リクエストヘッダーからAuthorizationトークンを取得
+        // 2. Supabaseの auth.getUser() でユーザー情報を取得
+        // 3. ユーザーIDを created_by に設定
         const DUMMY_USER_ID = '00000000-0000-4000-8000-000000000001';
 
         const { data: newDonation, error } = await supabase

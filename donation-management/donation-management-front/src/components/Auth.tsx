@@ -167,45 +167,54 @@ export default function AuthComponent() {
           Googleでログイン
         </button>
 
-        <button
-          onClick={async () => {
-            setLoading(true);
-            try {
-              const { error } = await supabase.auth.signInWithPassword({
-                email: 'admin@company.com',
-                password: 'password',
-              });
-              if (error) throw error;
-            } catch {
-              // If sign in fails, try to sign up (for dev convenience)
+        {/* 開発環境のみ開発用ログインボタンを表示 */}
+        {import.meta.env.DEV && (
+          <button
+            onClick={async () => {
+              setLoading(true);
               try {
-                const { error: signUpError } = await supabase.auth.signUp({
-                  email: 'admin@company.com',
-                  password: 'password',
+                const devEmail = import.meta.env.VITE_DEV_EMAIL || 'admin@company.com';
+                const devPassword = import.meta.env.VITE_DEV_PASSWORD || 'password';
+
+                const { error } = await supabase.auth.signInWithPassword({
+                  email: devEmail,
+                  password: devPassword,
                 });
-                if (signUpError) throw signUpError;
-                setMessage('開発用ユーザーを作成しました。もう一度クリックしてください。');
-              } catch (signUpError) {
-                const errorMessage = signUpError instanceof Error ? signUpError.message : 'エラーが発生しました';
-                setMessage(errorMessage);
+                if (error) throw error;
+              } catch {
+                // If sign in fails, try to sign up (for dev convenience)
+                try {
+                  const devEmail = import.meta.env.VITE_DEV_EMAIL || 'admin@company.com';
+                  const devPassword = import.meta.env.VITE_DEV_PASSWORD || 'password';
+
+                  const { error: signUpError } = await supabase.auth.signUp({
+                    email: devEmail,
+                    password: devPassword,
+                  });
+                  if (signUpError) throw signUpError;
+                  setMessage('開発用ユーザーを作成しました。もう一度クリックしてください。');
+                } catch (signUpError) {
+                  const errorMessage = signUpError instanceof Error ? signUpError.message : 'エラーが発生しました';
+                  setMessage(errorMessage);
+                }
+              } finally {
+                setLoading(false);
               }
-            } finally {
-              setLoading(false);
-            }
-          }}
-          style={{
-            width: '100%',
-            padding: '10px',
-            backgroundColor: '#666',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            marginTop: '10px'
-          }}
-        >
-          開発用ログイン (admin)
-        </button>
+            }}
+            style={{
+              width: '100%',
+              padding: '10px',
+              backgroundColor: '#666',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              marginTop: '10px'
+            }}
+          >
+            開発用ログイン (admin)
+          </button>
+        )}
       </div>
     </div>
   )

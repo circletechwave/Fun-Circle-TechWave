@@ -48,7 +48,9 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                 if (locationsRes.success) setLocations(locationsRes.data);
                 if (tagsRes.success) setTags(tagsRes.data);
             } catch (error) {
-                console.error('Failed to load master data:', error);
+                if (import.meta.env.DEV) {
+                    console.error('Failed to load master data:', error);
+                }
             }
         };
         loadMasterData();

@@ -29,7 +29,9 @@ export default function SearchFilter({ filters, onFiltersChange }: SearchFilterP
           setLocations(locationsResult.data);
         }
       } catch (error) {
-        console.error('Failed to load filter data:', error);
+        if (import.meta.env.DEV) {
+          console.error('Failed to load filter data:', error);
+        }
       } finally {
         setLoading(false);
       }
