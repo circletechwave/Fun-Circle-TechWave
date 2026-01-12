@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
 import type { Donation } from '../types/donation';
-import { donationApi } from '../services/donationApi';
+import { useDonation } from '../hooks/useDonations';
 
 interface DonationDetailProps {
     donationId: string;
@@ -9,31 +8,14 @@ interface DonationDetailProps {
 }
 
 export default function DonationDetail({ donationId, onBack, onEdit }: DonationDetailProps) {
-    const [donation, setDonation] = useState<Donation | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | undefined>();
+    // React Queryで寄贈物詳細を取得
+    const { data: result, isLoading, error } = useDonation(donationId);
 
-    useEffect(() => {
-        const fetchDonation = async () => {
-            try {
-                const result = await donationApi.getDonation(donationId);
-                if (result.success) {
-                    setDonation(result.data);
-                } else {
-                    setError(result.error || '詳細の取得に失敗しました');
-                }
-            } catch {
-                setError('エラーが発生しました');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchDonation();
-    }, [donationId]);
+    if (isLoading) return <div style={{ padding: '20px', textAlign: 'center' }}>読み込み中...</div>;
+    if (error) return <div style={{ padding: '20px', color: 'red', textAlign: 'center' }}>エラーが発生しました</div>;
+    if (!result?.success || !result.data) return null;
 
-    if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>読み込み中...</div>;
-    if (error) return <div style={{ padding: '20px', color: 'red', textAlign: 'center' }}>{error}</div>;
-    if (!donation) return null;
+    const donation = result.data;
 
     return (
         <div className="donation-detail" style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>

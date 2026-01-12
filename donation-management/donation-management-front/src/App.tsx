@@ -3,11 +3,11 @@ import type { Session } from '@supabase/supabase-js'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { supabase } from './lib/supabase'
 import { queryClient } from './lib/queryClient'
+import { useCreateDonation, useUpdateDonation, useDeleteDonation } from './hooks/useDonations'
 import AuthComponent from './components/Auth'
 import DonationSearch from './components/DonationSearch'
 import DonationForm from './components/DonationForm'
 import type { Donation } from './types/donation'
-import { donationApi } from './services/donationApi'
 import './App.css'
 
 import DonationDetail from './components/DonationDetail'
@@ -17,6 +17,11 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'detail'>('list')
   const [selectedDonation, setSelectedDonation] = useState<Donation | undefined>(undefined)
   const [selectedDonationId, setSelectedDonationId] = useState<string | undefined>(undefined)
+
+  // React Queryのミューテーションフック
+  const createMutation = useCreateDonation()
+  const updateMutation = useUpdateDonation()
+  const deleteMutation = useDeleteDonation()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -56,29 +61,25 @@ function AppContent() {
   const handleSubmit = async (data: Partial<Donation>) => {
     try {
       if (currentView === 'create') {
-        await donationApi.createDonation(data)
+        await createMutation.mutateAsync(data)
       } else if (currentView === 'edit' && selectedDonation) {
-        await donationApi.updateDonation(selectedDonation.id, data)
+        await updateMutation.mutateAsync({ id: selectedDonation.id, data })
       }
       setCurrentView('list')
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Failed to save donation:', error)
-      }
-      alert('保存に失敗しました')
+      const errorMessage = error instanceof Error ? error.message : '保存に失敗しました'
+      alert(errorMessage)
     }
   }
 
   const handleDelete = async () => {
     if (selectedDonation) {
       try {
-        await donationApi.deleteDonation(selectedDonation.id)
+        await deleteMutation.mutateAsync(selectedDonation.id)
         setCurrentView('list')
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Failed to delete donation:', error)
-        }
-        alert('削除に失敗しました')
+        const errorMessage = error instanceof Error ? error.message : '削除に失敗しました'
+        alert(errorMessage)
       }
     }
   }

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { Donation, SearchFilters, PaginationInfo } from '../types/donation';
-import { donationApi } from '../services/donationApi';
+import { useState } from 'react';
+import type { Donation, SearchFilters } from '../types/donation';
+import { useDonations } from '../hooks/useDonations';
 import SearchFilter from './SearchFilter';
 import DonationList from './DonationList';
 import './DonationSearch.css';
@@ -19,55 +19,19 @@ interface DonationSearchProps {
 
 export default function DonationSearch({ onCreate, onDetail }: DonationSearchProps) {
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
-  const [donations, setDonations] = useState<Donation[]>([]);
-  const [pagination, setPagination] = useState<PaginationInfo>({
+
+  // React Queryで寄贈物一覧を取得
+  const { data: result, isLoading, error } = useDonations(filters);
+
+  // データとページネーション情報を抽出
+  const donations = result?.data || [];
+  const pagination = result?.pagination || {
     page: 1,
     per_page: 20,
     total: 0,
     total_pages: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>();
-
-  const searchDonations = useCallback(async (searchFilters: SearchFilters) => {
-    setLoading(true);
-    setError(undefined);
-
-    try {
-      const result = await donationApi.searchDonations(searchFilters);
-
-      if (result.success) {
-        setDonations(result.data);
-        setPagination(result.pagination);
-      } else {
-        setError(result.error || '検索に失敗しました');
-        setDonations([]);
-        setPagination({
-          page: 1,
-          per_page: 20,
-          total: 0,
-          total_pages: 0,
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '検索中にエラーが発生しました';
-      setError(errorMessage);
-      setDonations([]);
-      setPagination({
-        page: 1,
-        per_page: 20,
-        total: 0,
-        total_pages: 0,
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Initial load and filter changes
-  useEffect(() => {
-    searchDonations(filters);
-  }, [filters, searchDonations]);
+  };
+  const errorMessage = error ? '検索中にエラーが発生しました' : undefined;
 
   const handleFiltersChange = (newFilters: SearchFilters) => {
     setFilters(newFilters);
@@ -109,8 +73,8 @@ export default function DonationSearch({ onCreate, onDetail }: DonationSearchPro
       <DonationList
         donations={donations}
         pagination={pagination}
-        loading={loading}
-        error={error}
+        loading={isLoading}
+        error={errorMessage}
         onPageChange={handlePageChange}
         onDetail={onDetail}
       />
