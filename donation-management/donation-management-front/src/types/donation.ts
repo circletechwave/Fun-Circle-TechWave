@@ -72,6 +72,7 @@ export interface SearchFilters {
   keyword: string;
   category_id?: string;
   sub_category_id?: string;
+  tag_id?: string;
   status?: 'available' | 'lending' | 'maintenance' | 'lost';
   location_id?: string;
   sort: 'created_at' | '-created_at' | 'title' | '-title' | 'popular';
