@@ -39,11 +39,18 @@ export const donationApi = {
           categories (id, name),
           sub_categories (id, name),
           locations (id, name),
-          donation_images (image_url, display_order)
+          donation_images (image_url, display_order),
+          donation_tags!left (
+            tags (id, name)
+          )
         `, { count: 'exact' })
         .is('deleted_at', null);
 
       // Apply filters
+      if (filters.tag_id) {
+        // Use inner join for tag filtering
+        query = query.filter('donation_tags.tag_id', 'eq', filters.tag_id);
+      }
       if (filters.category_id) {
         query = query.eq('category_id', filters.category_id);
       }
@@ -91,6 +98,8 @@ export const donationApi = {
         // Ensure arrays are initialized if null
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         image_urls: item.donation_images?.sort((a: any, b: any) => a.display_order - b.display_order).map((img: any) => img.image_url) || [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tags: item.donation_tags?.map((dt: any) => dt.tags).filter(Boolean) || [],
       }));
 
       const total = count || 0;
@@ -134,7 +143,6 @@ export const donationApi = {
 
       if (error) throw error;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const item: any = data;
       const donation: Donation = {

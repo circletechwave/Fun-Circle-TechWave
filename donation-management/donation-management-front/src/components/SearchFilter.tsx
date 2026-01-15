@@ -11,14 +11,16 @@ interface SearchFilterProps {
 export default function SearchFilter({ filters, onFiltersChange }: SearchFilterProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [tags, setTags] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadFilterData = async () => {
       try {
-        const [categoriesResult, locationsResult] = await Promise.all([
+        const [categoriesResult, locationsResult, tagsResult] = await Promise.all([
           donationApi.getCategories(),
           donationApi.getLocations(),
+          donationApi.getTags(),
         ]);
 
         if (categoriesResult.success) {
@@ -27,6 +29,10 @@ export default function SearchFilter({ filters, onFiltersChange }: SearchFilterP
 
         if (locationsResult.success) {
           setLocations(locationsResult.data);
+        }
+
+        if (tagsResult.success) {
+          setTags(tagsResult.data);
         }
       } catch (error) {
         console.error('Failed to load filter data:', error);
@@ -40,17 +46,17 @@ export default function SearchFilter({ filters, onFiltersChange }: SearchFilterP
 
   const handleInputChange = (field: keyof SearchFilters, value: SearchFilters[keyof SearchFilters]) => {
     const newFilters = { ...filters, [field]: value };
-    
+
     // Reset sub_category_id when category_id changes
     if (field === 'category_id') {
       newFilters.sub_category_id = undefined;
     }
-    
+
     // Reset to first page when filters change
     if (field !== 'page') {
       newFilters.page = 1;
     }
-    
+
     onFiltersChange(newFilters);
   };
 
@@ -70,12 +76,6 @@ export default function SearchFilter({ filters, onFiltersChange }: SearchFilterP
           onChange={(e) => handleInputChange('keyword', e.target.value)}
           className="search-input"
         />
-        <button 
-          className="search-button"
-          onClick={() => onFiltersChange({ ...filters, page: 1 })}
-        >
-          検索
-        </button>
       </div>
 
       <div className="filters-grid">
@@ -145,6 +145,22 @@ export default function SearchFilter({ filters, onFiltersChange }: SearchFilterP
         </div>
 
         <div className="filter-group">
+          <label htmlFor="tag-select">タグ</label>
+          <select
+            id="tag-select"
+            value={filters.tag_id || ''}
+            onChange={(e) => handleInputChange('tag_id', e.target.value || undefined)}
+          >
+            <option value="">全てのタグ</option>
+            {tags.map((tag) => (
+              <option key={tag.id} value={tag.id}>
+                {tag.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
           <label htmlFor="sort-select">並び順</label>
           <select
             id="sort-select"
@@ -181,6 +197,11 @@ export default function SearchFilter({ filters, onFiltersChange }: SearchFilterP
             sort: '-created_at',
             page: 1,
             per_page: 20,
+            category_id: undefined,
+            sub_category_id: undefined,
+            tag_id: undefined,
+            status: undefined,
+            location_id: undefined,
           })}
         >
           フィルターをクリア
