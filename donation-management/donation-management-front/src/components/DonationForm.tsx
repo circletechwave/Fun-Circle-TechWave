@@ -19,7 +19,6 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
         status: 'available',
         condition: 'good',
         description: '',
-        image_url: '',
         image_urls: [],
         tags: [],
         donor_name: '',
@@ -59,7 +58,7 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
             setFormData({
                 ...initialData,
                 // Ensure arrays are initialized
-                image_urls: initialData.image_urls || (initialData.image_url ? [initialData.image_url] : []),
+                image_urls: initialData.image_urls || [],
                 tags: initialData.tags || []
             });
         }
@@ -72,12 +71,7 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Sync image_url with the first image in image_urls for backward compatibility
-        const firstImage = formData.image_urls && formData.image_urls.length > 0 ? formData.image_urls[0] : '';
-        onSubmit({
-            ...formData,
-            image_url: firstImage
-        });
+        onSubmit(formData);
     };
 
     const selectedCategory = categories.find(c => c.id === formData.category_id);

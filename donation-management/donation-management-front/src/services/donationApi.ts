@@ -164,7 +164,7 @@ export const donationApi = {
       const {
         category, sub_category, location,
         id, created_at, updated_at,
-        image_urls, tags,
+        image_urls, tags, image_url,
         ...insertData
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } = donation as any;
@@ -222,7 +222,7 @@ export const donationApi = {
       const {
         category, sub_category, location,
         id: _id, created_at, updated_at,
-        image_urls, tags,
+        image_urls, tags, image_url,
         ...updateData
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } = donation as any;
