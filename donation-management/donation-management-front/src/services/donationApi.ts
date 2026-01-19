@@ -202,10 +202,13 @@ export const donationApi = {
 
   async updateDonation(id: string, donation: Partial<Donation>): Promise<{ success: boolean; data: Donation; error?: string }> {
     try {
+      // リレーションデータや読み取り専用フィールドを除外
       const {
         category, sub_category, location,
-        id: _id, created_at, updated_at,
+        id: _id, created_at, updated_at, created_by,
         image_urls, tags, avg_rating, review_count,
+        image_url,
+        deleted_at,
         ...updateData
       } = donation;
 
