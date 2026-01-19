@@ -79,6 +79,8 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        console.log('DonationForm - formData being submitted:', formData);
+        console.log('DonationForm - formData keys:', Object.keys(formData));
         onSubmit(formData);
     };
 
