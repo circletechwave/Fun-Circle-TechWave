@@ -55,8 +55,10 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     useEffect(() => {
         if (mode === 'edit' && initialData) {
+            // リレーションデータを除外してフォームデータを設定
+            const { category, sub_category, location, ...cleanData } = initialData;
             setFormData({
-                ...initialData,
+                ...cleanData,
                 // Ensure arrays are initialized
                 image_urls: initialData.image_urls || [],
                 tags: initialData.tags || []
