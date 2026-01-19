@@ -55,8 +55,24 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     useEffect(() => {
         if (mode === 'edit' && initialData) {
-            // リレーションデータを除外してフォームデータを設定
-            const { category, sub_category, location, ...cleanData } = initialData;
+            // リレーションデータや読み取り専用フィールドを除外してフォームデータを設定
+            const donationWithMeta = initialData as Donation & {
+                created_by?: string;
+                updated_by?: string;
+                deleted_at?: string;
+                categories?: unknown;
+                sub_categories?: unknown;
+                locations?: unknown;
+                donation_images?: unknown;
+                donation_tags?: unknown;
+            };
+            const {
+                category, sub_category, location,
+                categories, sub_categories, locations,
+                donation_images, donation_tags,
+                created_by, updated_by, created_at, updated_at, deleted_at,
+                ...cleanData
+            } = donationWithMeta;
             setFormData({
                 ...cleanData,
                 // Ensure arrays are initialized
