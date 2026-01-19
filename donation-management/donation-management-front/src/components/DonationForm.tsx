@@ -66,7 +66,13 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        // published_yearは数値型として処理
+        if (name === 'published_year') {
+            const numValue = value === '' ? undefined : parseInt(value, 10);
+            setFormData(prev => ({ ...prev, [name]: numValue }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
