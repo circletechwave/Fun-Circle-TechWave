@@ -66,7 +66,8 @@ export const donationFormSchema = z.object({
     .int('整数を入力してください')
     .min(1000, '1000以上の年を入力してください')
     .max(9999, '9999以下の年を入力してください')
-    .optional(),
+    .optional()
+    .or(z.nan().transform(() => undefined)),
 
   // 備品情報
   manufacturer: z.string()
