@@ -61,13 +61,9 @@ function App() {
 
   const handleSubmit = async (data: Partial<Donation>) => {
     try {
-      console.log('App.handleSubmit - received data:', data);
-      console.log('App.handleSubmit - data keys:', Object.keys(data));
-
       if (currentView === 'create') {
         await donationApi.createDonation(data)
       } else if (currentView === 'edit' && selectedDonation) {
-        console.log('App.handleSubmit - updating with ID:', selectedDonation.id);
         await donationApi.updateDonation(selectedDonation.id, data)
       }
       setCurrentView('list')
