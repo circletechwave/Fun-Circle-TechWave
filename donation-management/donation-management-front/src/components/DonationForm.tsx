@@ -81,7 +81,7 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     // フォーム送信ハンドラー
     const onFormSubmit = (data: DonationFormData) => {
-        // 空文字列をundefinedに変換
+        // 空文字列やNaNをundefinedに変換
         const cleanData = {
             ...data,
             sub_category_id: data.sub_category_id || undefined,
@@ -91,6 +91,7 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
             isbn: data.isbn || undefined,
             author: data.author || undefined,
             publisher: data.publisher || undefined,
+            published_year: (data.published_year && !isNaN(data.published_year)) ? data.published_year : undefined,
             manufacturer: data.manufacturer || undefined,
             model_number: data.model_number || undefined,
         };
