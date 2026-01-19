@@ -150,6 +150,7 @@ export const donationApi = {
         category, sub_category, location,
         id, created_at, updated_at,
         image_urls, tags, avg_rating, review_count,
+        image_url,
         ...insertData
       } = donation;
 
