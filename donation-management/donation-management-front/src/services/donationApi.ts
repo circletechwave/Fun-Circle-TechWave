@@ -193,7 +193,6 @@ export const donationApi = {
         .single();
 
       if (error) {
-        // eslint-disable-next-line no-console
         console.error('Supabase Insert Error:', error);
         throw error;
       }
@@ -231,8 +230,8 @@ export const donationApi = {
       }
 
       return { success: true, data };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      // eslint-disable-next-line no-console
       console.error('Full Create Error Object:', error);
       return {
         success: false,
@@ -269,7 +268,6 @@ export const donationApi = {
         .single();
 
       if (error) {
-        // eslint-disable-next-line no-console
         console.error('Supabase Update Error:', error);
         throw error;
       }
@@ -320,8 +318,8 @@ export const donationApi = {
         }
       }
       return { success: true, data };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      // eslint-disable-next-line no-console
       console.error('Full Update Error Object:', error);
       return {
         success: false,
