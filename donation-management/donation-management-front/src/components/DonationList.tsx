@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Donation, PaginationInfo } from '../types/donation';
 import './DonationList.css';
 
@@ -18,6 +19,12 @@ export default function DonationList({
   onPageChange,
   onDetail
 }: DonationListProps) {
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+
+  const handleImageError = (id: string) => {
+    setBrokenImages(prev => ({ ...prev, [id]: true }));
+  };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'available': return '利用可能';
@@ -166,6 +173,23 @@ export default function DonationList({
         {donations.map((donation) => (
           <div key={donation.id} className="donation-card">
             <div className="donation-header">
+              <div className="donation-thumbnail">
+                {donation.image_urls && donation.image_urls.length > 0 && !brokenImages[donation.id] ? (
+                  <img
+                    src={donation.image_urls[0]}
+                    alt={donation.title}
+                    onError={() => handleImageError(donation.id)}
+                  />
+                ) : donation.image_url && !brokenImages[donation.id] ? (
+                  <img
+                    src={donation.image_url}
+                    alt={donation.title}
+                    onError={() => handleImageError(donation.id)}
+                  />
+                ) : (
+                  <div className="no-image">No Image</div>
+                )}
+              </div>
               <h3 className="donation-title">{donation.title}</h3>
               <span className={`status-badge ${getStatusClass(donation.status)}`}>
                 {getStatusLabel(donation.status)}

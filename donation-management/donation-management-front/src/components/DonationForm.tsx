@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Donation, Category, Location, Tag } from '../types/donation';
 import { donationApi } from '../services/donationApi';
+import { storageService } from '../services/storageService';
 
 interface DonationFormProps {
     mode: 'create' | 'edit';
@@ -34,6 +35,12 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
     const [categories, setCategories] = useState<Category[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
     const [tags, setTags] = useState<Tag[]>([]);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [previews, setPreviews] = useState<string[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [isStorageBrowserOpen, setIsStorageBrowserOpen] = useState(false);
+    const [existingImages, setExistingImages] = useState<string[]>([]);
 
     useEffect(() => {
         const loadMasterData = async () => {
@@ -69,9 +76,74 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadError(null);
+
+        // 5MBチェック
+        if (file.size > 5 * 1024 * 1024) {
+            setUploadError(`ファイル「${file.name}」が5MBを超えています。`);
+            return;
+        }
+
+        // 単一画像にするため、既存の選択とファイルをリセット
+        if (previews[0]) URL.revokeObjectURL(previews[0]);
+        setSelectedFiles([file]);
+        setFormData(prev => ({ ...prev, image_urls: [] })); // ストレージ選択分をクリア
+
+        // プレビュー作成
+        setPreviews([URL.createObjectURL(file)]);
+    };
+
+    const removePreview = () => {
+        setPreviews([]);
+        setSelectedFiles([]);
+        if (previews[0]) URL.revokeObjectURL(previews[0]);
+    };
+
+    const toggleStorageBrowser = async () => {
+        if (!isStorageBrowserOpen) {
+            const images = await storageService.listImages();
+            setExistingImages(images);
+        }
+        setIsStorageBrowserOpen(!isStorageBrowserOpen);
+    };
+
+    const selectExistingImage = (url: string) => {
+        setFormData(prev => ({ ...prev, image_urls: [url] }));
+        setIsStorageBrowserOpen(false);
+        // 新しくアップロードしようとしていたものはリセット
+        setPreviews([]);
+        setSelectedFiles([]);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit(formData);
+        setIsUploading(true);
+        setUploadError(null);
+
+        try {
+            let updatedImageUrls = [...(formData.image_urls || [])];
+
+            // 新規ファイルのアップロードがある場合、それを優先（置換）
+            if (selectedFiles.length > 0) {
+                const url = await storageService.uploadImage(selectedFiles[0]);
+                updatedImageUrls = [url];
+            }
+
+            // 最終的に1枚に絞る（安全策）
+            if (updatedImageUrls.length > 1) {
+                updatedImageUrls = [updatedImageUrls[updatedImageUrls.length - 1]];
+            }
+
+            onSubmit({ ...formData, image_urls: updatedImageUrls });
+        } catch (error) {
+            console.error('Submit error:', error);
+            setUploadError(error instanceof Error ? error.message : '保存に失敗しました。');
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     const selectedCategory = categories.find(c => c.id === formData.category_id);
@@ -187,41 +259,101 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                 </div>
 
                 <div style={{ marginBottom: '15px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>画像URL</label>
-                    {(formData.image_urls || []).map((url, index) => (
-                        <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                            <input
-                                type="text"
-                                value={url}
-                                onChange={(e) => {
-                                    const newUrls = [...(formData.image_urls || [])];
-                                    newUrls[index] = e.target.value;
-                                    setFormData(prev => ({ ...prev, image_urls: newUrls }));
-                                }}
-                                placeholder="https://example.com/image.jpg"
-                                style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                            />
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>画像</label>
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                        <input
+                            type="text"
+                            value={formData.image_urls?.[0] || ''}
+                            onChange={(e) => {
+                                setFormData(prev => ({ ...prev, image_urls: [e.target.value] }));
+                            }}
+                            placeholder="https://example.com/image.jpg"
+                            style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        />
+                        {formData.image_urls?.[0] && (
                             <button
                                 type="button"
-                                onClick={() => {
-                                    const newUrls = (formData.image_urls || []).filter((_, i) => i !== index);
-                                    setFormData(prev => ({ ...prev, image_urls: newUrls }));
-                                }}
+                                onClick={() => setFormData(prev => ({ ...prev, image_urls: [] }))}
                                 style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                             >
                                 削除
                             </button>
+                        )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                        <label
+                            htmlFor="file-upload"
+                            style={{ padding: '8px 16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                        >
+                            PCからアップロード
+                        </label>
+                        <button
+                            type="button"
+                            onClick={toggleStorageBrowser}
+                            style={{ padding: '8px 16px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                        >
+                            ストレージから選択
+                        </button>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            style={{ display: 'none' }}
+                            id="file-upload"
+                        />
+                    </div>
+
+                    {isStorageBrowserOpen && (
+                        <div style={{
+                            padding: '15px',
+                            border: '1px solid #eee',
+                            borderRadius: '8px',
+                            marginBottom: '15px',
+                            maxHeight: '300px',
+                            overflowY: 'auto',
+                            backgroundColor: '#f9f9f9'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                <h4 style={{ margin: 0 }}>アップロード済み画像</h4>
+                                <button type="button" onClick={() => setIsStorageBrowserOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#666' }}>閉じる</button>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '10px' }}>
+                                {existingImages.map((url, idx) => (
+                                    <img
+                                        key={idx}
+                                        src={url}
+                                        alt="existing"
+                                        onClick={() => selectExistingImage(url)}
+                                        style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '2px solid transparent' }}
+                                        onMouseOver={e => e.currentTarget.style.borderColor = '#007bff'}
+                                        onMouseOut={e => e.currentTarget.style.borderColor = 'transparent'}
+                                    />
+                                ))}
+                                {existingImages.length === 0 && <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#888' }}>画像がありません</p>}
+                            </div>
                         </div>
-                    ))}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setFormData(prev => ({ ...prev, image_urls: [...(prev.image_urls || []), ''] }));
-                        }}
-                        style={{ padding: '8px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                        画像を追加
-                    </button>
+                    )}
+
+                    {previews.length > 0 && (
+                        <div style={{ marginBottom: '15px' }}>
+                            <p style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>アップロード予定:</p>
+                            <div style={{ position: 'relative', width: '100px', height: '100px' }}>
+                                <img src={previews[0]} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px', border: '2px solid #28a745' }} />
+                                <button
+                                    type="button"
+                                    onClick={() => removePreview()}
+                                    style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {uploadError && (
+                        <p style={{ color: '#dc3545', marginTop: '10px', fontSize: '14px' }}>{uploadError}</p>
+                    )}
                 </div>
 
                 <div style={{ marginBottom: '15px' }}>
@@ -370,9 +502,10 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                         </button>
                         <button
                             type="submit"
-                            style={{ padding: '10px 20px', backgroundColor: '#0d6efd', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            disabled={isUploading}
+                            style={{ padding: '10px 20px', backgroundColor: isUploading ? '#ccc' : '#0d6efd', color: 'white', border: 'none', borderRadius: '4px', cursor: isUploading ? 'not-allowed' : 'pointer' }}
                         >
-                            {mode === 'create' ? '登録する' : '更新する'}
+                            {isUploading ? '保存中...' : (mode === 'create' ? '登録する' : '更新する')}
                         </button>
                     </div>
                 </div>
