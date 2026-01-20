@@ -51,3 +51,28 @@ USING (
     )
   )
 );
+
+-- 1. バケットを「公開(Public)」に設定する（すでにある場合は更新）
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('donation-image', 'donation-image', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- 2. 画像の閲覧権限をすべての人に許可する
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+CREATE POLICY "Public Access" ON storage.objects
+FOR SELECT USING (bucket_id = 'donation-image');
+
+-- 3. 画像のアップロード権限をすべての人に許可する
+-- (認証済みユーザーのみに制限したい場合は USING (auth.role() = 'authenticated') を使用します)
+DROP POLICY IF EXISTS "Public Upload" ON storage.objects;
+CREATE POLICY "Public Upload" ON storage.objects
+FOR INSERT WITH CHECK (bucket_id = 'donation-image');
+
+-- 4. 画像の更新・削除権限も許可する
+DROP POLICY IF EXISTS "Public Update" ON storage.objects;
+CREATE POLICY "Public Update" ON storage.objects
+FOR UPDATE USING (bucket_id = 'donation-image');
+
+DROP POLICY IF EXISTS "Public Delete" ON storage.objects;
+CREATE POLICY "Public Delete" ON storage.objects
+FOR DELETE USING (bucket_id = 'donation-image');
