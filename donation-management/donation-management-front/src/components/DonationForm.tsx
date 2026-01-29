@@ -55,8 +55,26 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     useEffect(() => {
         if (mode === 'edit' && initialData) {
+            // リレーションデータや読み取り専用フィールドを除外してフォームデータを設定
+            const donationWithMeta = initialData as Donation & {
+                created_by?: string;
+                updated_by?: string;
+                deleted_at?: string;
+                categories?: unknown;
+                sub_categories?: unknown;
+                locations?: unknown;
+                donation_images?: unknown;
+                donation_tags?: unknown;
+            };
+            const {
+                category, sub_category, location,
+                categories, sub_categories, locations,
+                donation_images, donation_tags,
+                created_by, updated_by, created_at, updated_at, deleted_at,
+                ...cleanData
+            } = donationWithMeta;
             setFormData({
-                ...initialData,
+                ...cleanData,
                 // Ensure arrays are initialized
                 image_urls: initialData.image_urls || [],
                 tags: initialData.tags || []
@@ -66,7 +84,13 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        // published_yearは数値型として処理
+        if (name === 'published_year') {
+            const numValue = value === '' ? undefined : parseInt(value, 10);
+            setFormData(prev => ({ ...prev, [name]: numValue }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {

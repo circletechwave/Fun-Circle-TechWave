@@ -227,13 +227,16 @@ export const donationApi = {
 
   async updateDonation(id: string, donation: Partial<Donation>): Promise<{ success: boolean; data: Donation; error?: string }> {
     try {
+      // リレーションデータや読み取り専用フィールドを除外
+      const donationWithMeta = donation as Partial<Donation> & { created_by?: string; deleted_at?: string; avg_rating?: number; review_count?: number };
       const {
         category, sub_category, location,
-        id: _id, created_at, updated_at,
-        image_urls, tags, image_url,
+        id: _id, created_at, updated_at, created_by,
+        image_urls, tags, avg_rating, review_count,
+        image_url,
+        deleted_at,
         ...updateData
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } = donation as any;
+      } = donationWithMeta;
 
       const { data, error } = await supabase
         .from('donations')

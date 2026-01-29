@@ -36,7 +36,15 @@ function App() {
   }
 
   const handleEdit = (donation: Donation) => {
-    setSelectedDonation(donation)
+    // リレーションデータを除外してクリーンなオブジェクトのみを保持
+    const cleanDonation: Donation = {
+      ...donation,
+      category: undefined,
+      sub_category: undefined,
+      location: undefined,
+    }
+    setSelectedDonation(cleanDonation)
+    setSelectedDonationId(undefined)
     setCurrentView('edit')
   }
 
