@@ -242,23 +242,20 @@ export const donationApi = {
   },
 
   async updateDonation(id: string, donation: Partial<Donation>): Promise<{ success: boolean; data: Donation; error?: string }> {
-    // List of actual table columns to include
-    const donationColumns = [
-      'title', 'category_id', 'sub_category_id', 'donor_name', 'donated_date',
-      'location_id', 'status', 'description', 'isbn', 'author', 'publisher',
-      'published_year', 'manufacturer', 'model_number', 'condition',
-      'created_by', 'updated_by'
-    ];
-
     try {
-      const updateData: Record<string, unknown> = {};
-      donationColumns.forEach(key => {
-        if (donation[key as keyof Partial<Donation>] !== undefined && key !== 'created_by') { // created_by should not be updated
-          updateData[key] = donation[key as keyof Partial<Donation>];
-        }
-      });
+      // リレーションデータや読み取り専用フィールドを除外
+      const donationWithMeta = donation as Partial<Donation> & { created_by?: string; deleted_at?: string; avg_rating?: number; review_count?: number };
+      const {
+        category, sub_category, location,
+        id: _id, created_at, updated_at, created_by,
+        image_urls, tags, avg_rating, review_count,
+        image_url,
+        deleted_at,
+        ...updateData
+      } = donationWithMeta;
+
       // eslint-disable-next-line no-console
-      console.debug('Updating donation with whitelisted data:', updateData);
+      console.debug('Updating donation with filtered data:', updateData);
 
       const { data, error } = await supabase
         .from('donations')
@@ -271,10 +268,6 @@ export const donationApi = {
         console.error('Supabase Update Error:', error);
         throw error;
       }
-
-      // Extract image_urls and tags from the original donation object
-      const image_urls = donation.image_urls;
-      const tags = donation.tags;
 
       // Update images (Delete all and insert new)
       if (image_urls !== undefined) {
