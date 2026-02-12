@@ -87,7 +87,6 @@ export const donationApi = {
       const { data, error, count } = await query.range(from, to);
 
       if (error) throw error;
-
       // Transform data to match Donation interface
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const donations: Donation[] = (data || []).map((item: any) => ({
@@ -96,10 +95,8 @@ export const donationApi = {
         sub_category: item.sub_categories,
         location: item.locations,
         // Ensure arrays are initialized if null
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        image_urls: item.donation_images?.sort((a: any, b: any) => a.display_order - b.display_order).map((img: any) => img.image_url) || [],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tags: item.donation_tags?.map((dt: any) => dt.tags).filter(Boolean) || [],
+        image_urls: item.donation_images?.sort((a: { display_order: number }, b: { display_order: number }) => a.display_order - b.display_order).map((img: { image_url: string }) => img.image_url) || [],
+        tags: item.donation_tags?.map((dt: { tags: Tag }) => dt.tags).filter(Boolean) || [],
       }));
 
       const total = count || 0;
@@ -142,18 +139,15 @@ export const donationApi = {
         .single();
 
       if (error) throw error;
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const item: any = data;
+      const item: any = data; // Keep as any for now due to complex nested structure
       const donation: Donation = {
         ...item,
         category: item.categories,
         sub_category: item.sub_categories,
         location: item.locations,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        image_urls: item.donation_images?.sort((a: any, b: any) => a.display_order - b.display_order).map((img: any) => img.image_url) || [],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tags: item.donation_tags?.map((dt: any) => dt.tags) || [],
+        image_urls: item.donation_images?.sort((a: { display_order: number }, b: { display_order: number }) => a.display_order - b.display_order).map((img: { image_url: string }) => img.image_url) || [],
+        tags: item.donation_tags?.map((dt: { tags: Tag }) => dt.tags) || [],
       };
 
       return { success: true, data: donation };
@@ -167,29 +161,47 @@ export const donationApi = {
   },
 
   async createDonation(donation: Partial<Donation>): Promise<{ success: boolean; data: Donation; error?: string }> {
-    try {
-      // Remove nested objects and undefined fields before insert
-      const {
-        category, sub_category, location,
-        id, created_at, updated_at,
-        image_urls, tags, image_url,
-        ...insertData
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } = donation as any;
+    // List of actual table columns to include in insert/update
+    const donationColumns = [
+      'title', 'category_id', 'sub_category_id', 'donor_name', 'donated_date',
+      'location_id', 'status', 'description', 'isbn', 'author', 'publisher',
+      'published_year', 'manufacturer', 'model_number', 'condition',
+      'created_by', 'updated_by'
+    ];
 
-      // Add created_by (using current user if available, otherwise dummy)
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id || '00000000-0000-4000-8000-000000000001';
+    try {
+      // Pick only whitelisted columns from the input
+      const insertData: Record<string, unknown> = {};
+      donationColumns.forEach(key => {
+        if (donation[key as keyof Partial<Donation>] !== undefined) {
+          insertData[key] = donation[key as keyof Partial<Donation>];
+        }
+      });
+      // eslint-disable-next-line no-console
+      console.debug('Inserting donation with whitelisted data:', insertData);
+
+      // Add created_by if missing (simple assignment as before)
+      if (!insertData.created_by) {
+        const { data: { user: vUser } } = await supabase.auth.getUser();
+        insertData.created_by = vUser?.id || '00000000-0000-4000-8000-000000000001';
+      }
 
       const { data, error } = await supabase
         .from('donations')
-        .insert({ ...insertData, created_by: userId })
+        .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase Insert Error:', error);
+        throw error;
+      }
 
       const newDonationId = data.id;
+
+      // Extract image_urls and tags from the original donation object
+      const image_urls = donation.image_urls;
+      const tags = donation.tags;
 
       // Insert images
       if (image_urls && image_urls.length > 0) {
@@ -205,8 +217,10 @@ export const donationApi = {
       // Insert tags
       if (tags && tags.length > 0) {
         // tags can be array of strings (IDs) or Tag objects
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tagIds = tags.map((t: any) => typeof t === 'string' ? t : t.id);
+        // Deduplicate tags to avoid 409 Conflict on unique constraint
+        const tagIds: string[] = Array.from(new Set(tags.map(t => typeof t === 'string' ? t : t.id)));
+        // eslint-disable-next-line no-console
+        console.debug(`Inserting ${tagIds.length} unique tags for donation ${newDonationId}:`, tagIds);
         const tagsToInsert = tagIds.map((tagId: string) => ({
           donation_id: newDonationId,
           tag_id: tagId
@@ -216,11 +230,13 @@ export const donationApi = {
       }
 
       return { success: true, data };
-    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Full Create Error Object:', error);
       return {
         success: false,
         data: {} as Donation,
-        error: error instanceof Error ? error.message : '登録に失敗しました'
+        error: error.message || '登録に失敗しました'
       };
     }
   },
@@ -238,6 +254,9 @@ export const donationApi = {
         ...updateData
       } = donationWithMeta;
 
+      // eslint-disable-next-line no-console
+      console.debug('Updating donation with filtered data:', updateData);
+
       const { data, error } = await supabase
         .from('donations')
         .update(updateData)
@@ -245,41 +264,60 @@ export const donationApi = {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase Update Error:', error);
+        throw error;
+      }
 
       // Update images (Delete all and insert new)
-      if (image_urls) {
+      if (image_urls !== undefined) {
+        // eslint-disable-next-line no-console
+        console.debug(`Updating images for donation ${id}. Deleting existing...`);
         await supabase.from('donation_images').delete().eq('donation_id', id);
         if (image_urls.length > 0) {
+          // eslint-disable-next-line no-console
+          console.debug(`Inserting ${image_urls.length} new images for donation ${id}`);
           const imagesToInsert = image_urls.map((url: string, index: number) => ({
             donation_id: id,
             image_url: url,
             display_order: index + 1
           }));
           await supabase.from('donation_images').insert(imagesToInsert);
+        } else {
+          // eslint-disable-next-line no-console
+          console.debug(`No images provided for donation ${id}, all existing images deleted.`);
         }
       }
 
-      // Update tags (Delete all and insert new)
-      if (tags) {
+      // Update tags (delete and re-insert)
+      if (tags !== undefined) {
+        // eslint-disable-next-line no-console
+        console.debug(`Updating tags for donation ${id}. Deleting existing...`);
         await supabase.from('donation_tags').delete().eq('donation_id', id);
         if (tags.length > 0) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const tagIds = tags.map((t: any) => typeof t === 'string' ? t : t.id);
+          const tagIds: string[] = Array.from(new Set(tags.map((t: any) => typeof t === 'string' ? t : t.id)));
+          // eslint-disable-next-line no-console
+          console.debug(`Inserting ${tagIds.length} unique tags for donation ${id}:`, tagIds);
           const tagsToInsert = tagIds.map((tagId: string) => ({
             donation_id: id,
             tag_id: tagId
           }));
-          await supabase.from('donation_tags').insert(tagsToInsert);
+          const { error: tagError } = await supabase.from('donation_tags').insert(tagsToInsert);
+          if (tagError) throw tagError;
+        } else {
+          // eslint-disable-next-line no-console
+          console.debug(`No tags provided for donation ${id}, all existing tags deleted.`);
         }
       }
-
       return { success: true, data };
-    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Full Update Error Object:', error);
       return {
         success: false,
         data: {} as Donation,
-        error: error instanceof Error ? error.message : '更新に失敗しました'
+        error: error.message || '更新に失敗しました'
       };
     }
   },

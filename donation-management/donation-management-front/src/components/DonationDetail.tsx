@@ -8,6 +8,29 @@ interface DonationDetailProps {
     onEdit: (donation: Donation) => void;
 }
 
+const SafeImage = ({ src, alt, style }: { src: string; alt: string; style: React.CSSProperties }) => {
+    const [imgError, setImgError] = useState(false);
+
+    if (imgError) {
+        return (
+            <div style={{
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ...style as any,
+                backgroundColor: '#f0f0f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#888',
+                height: '300px'
+            }}>
+                No Image
+            </div>
+        );
+    }
+
+    return <img src={src} alt={alt} style={style} onError={() => setImgError(true)} />;
+};
+
 export default function DonationDetail({ donationId, onBack, onEdit }: DonationDetailProps) {
     const [donation, setDonation] = useState<Donation | null>(null);
     const [loading, setLoading] = useState(true);
@@ -61,7 +84,7 @@ export default function DonationDetail({ donationId, onBack, onEdit }: DonationD
                             {donation.image_urls && donation.image_urls.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                     {donation.image_urls.map((url, index) => (
-                                        <img
+                                        <SafeImage
                                             key={index}
                                             src={url}
                                             alt={`${donation.title} - ${index + 1}`}
@@ -70,7 +93,7 @@ export default function DonationDetail({ donationId, onBack, onEdit }: DonationD
                                     ))}
                                 </div>
                             ) : donation.image_url ? (
-                                <img
+                                <SafeImage
                                     src={donation.image_url}
                                     alt={donation.title}
                                     style={{ width: '100%', borderRadius: '8px', objectFit: 'cover' }}
