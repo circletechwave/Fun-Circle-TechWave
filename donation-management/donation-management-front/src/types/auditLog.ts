@@ -1,0 +1,98 @@
+/**
+ * 監査ログのアクション種別
+ */
+export type AuditAction =
+  | 'LOGIN_SUCCESS'
+  | 'LOGIN_FAILURE'
+  | 'LOGOUT'
+  | 'AUTH_ERROR'
+  | 'PERMISSION_DENIED'
+  | 'DONATION_CREATE'
+  | 'DONATION_UPDATE'
+  | 'DONATION_DELETE'
+  | 'LENDING_CREATE'
+  | 'LENDING_RETURN'
+  | 'API_ERROR';
+
+/**
+ * 監査ログエントリの型定義
+ */
+export interface AuditLog {
+  id: string;
+  user_id: string | null;
+  user_email: string | null;
+  action: AuditAction;
+  table_name: string | null;
+  record_id: string | null;
+  old_values: Record<string, unknown> | null;
+  new_values: Record<string, unknown> | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  request_path: string | null;
+  request_method: string | null;
+  response_status: number | null;
+  error_message: string | null;
+  created_at: string;
+}
+
+/**
+ * 監査ログ一覧APIのレスポンス型
+ */
+export interface AuditLogListResponse {
+  success: boolean;
+  data: AuditLog[];
+  pagination: {
+    page: number;
+    per_page: number;
+    total: number;
+    total_pages: number;
+  };
+}
+
+/**
+ * 監査ログ検索フィルター
+ */
+export interface AuditLogFilters {
+  page: number;
+  per_page: number;
+  action?: AuditAction;
+  user_id?: string;
+  table_name?: string;
+  date_from?: string;
+  date_to?: string;
+  keyword?: string;
+}
+
+/**
+ * アクション種別の日本語ラベル
+ */
+export const ACTION_LABELS: Record<AuditAction, string> = {
+  LOGIN_SUCCESS: 'ログイン成功',
+  LOGIN_FAILURE: 'ログイン失敗',
+  LOGOUT: 'ログアウト',
+  AUTH_ERROR: '認証エラー',
+  PERMISSION_DENIED: '権限エラー',
+  DONATION_CREATE: '寄贈物作成',
+  DONATION_UPDATE: '寄贈物更新',
+  DONATION_DELETE: '寄贈物削除',
+  LENDING_CREATE: '貸出作成',
+  LENDING_RETURN: '返却処理',
+  API_ERROR: 'APIエラー',
+};
+
+/**
+ * アクション種別のカテゴリ
+ */
+export const ACTION_CATEGORIES: Record<AuditAction, 'security' | 'application'> = {
+  LOGIN_SUCCESS: 'security',
+  LOGIN_FAILURE: 'security',
+  LOGOUT: 'security',
+  AUTH_ERROR: 'security',
+  PERMISSION_DENIED: 'security',
+  DONATION_CREATE: 'application',
+  DONATION_UPDATE: 'application',
+  DONATION_DELETE: 'application',
+  LENDING_CREATE: 'application',
+  LENDING_RETURN: 'application',
+  API_ERROR: 'application',
+};

@@ -13,12 +13,20 @@ import { DonationDelete } from "./endpoints/donationDelete";
 import { CategoryList } from "./endpoints/categoryList";
 import { LocationList } from "./endpoints/locationList";
 import { TagList } from "./endpoints/tagList";
+import { AuditLogList } from "./endpoints/auditLogList";
+import { authMiddleware } from "./middleware/auth";
+import { requireAdmin } from "./middleware/adminAuth";
+import type { Env } from "./types";
 
 // Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
 
 // Add CORS middleware
 app.use("/api/*", cors());
+
+// Admin routes - require authentication and admin role
+app.use("/api/admin/*", authMiddleware);
+app.use("/api/admin/*", requireAdmin);
 
 // Setup OpenAPI registry
 const openapi = fromHono(app, {
@@ -42,8 +50,8 @@ openapi.get("/api/categories", CategoryList);
 openapi.get("/api/locations", LocationList);
 openapi.get("/api/tags", TagList);
 
-// You may also register routes for non OpenAPI directly on Hono
-// app.get('/test', (c) => c.text('Hono!'))
+// Admin endpoints (protected by authMiddleware + requireAdmin)
+openapi.get("/api/admin/audit-logs", AuditLogList);
 
 // Export the Hono app
 export default app;

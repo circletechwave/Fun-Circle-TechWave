@@ -1,34 +1,21 @@
-import { useEffect, useState } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { supabase } from './lib/supabase'
+import { useState } from 'react'
 import AuthComponent from './components/Auth'
 import DonationSearch from './components/DonationSearch'
 import DonationForm from './components/DonationForm'
+import DonationDetail from './components/DonationDetail'
+import { AuditLogDashboard } from './components/admin/AuditLogDashboard'
+import { useAuth } from './hooks/useAuth'
 import type { Donation } from './types/donation'
 import { donationApi } from './services/donationApi'
 import './App.css'
 
-import DonationDetail from './components/DonationDetail'
+type ViewType = 'list' | 'create' | 'edit' | 'detail' | 'admin'
 
 function App() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'detail'>('list')
+  const { session, isAdmin, loading, signOut } = useAuth()
+  const [currentView, setCurrentView] = useState<ViewType>('list')
   const [selectedDonation, setSelectedDonation] = useState<Donation | undefined>(undefined)
   const [selectedDonationId, setSelectedDonationId] = useState<string | undefined>(undefined)
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-    })
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
 
   const handleAdd = () => {
     setSelectedDonation(undefined)
@@ -36,7 +23,6 @@ function App() {
   }
 
   const handleEdit = (donation: Donation) => {
-    // リレーションデータを除外してクリーンなオブジェクトのみを保持
     const cleanDonation: Donation = {
       ...donation,
       category: undefined,
@@ -68,7 +54,6 @@ function App() {
       }
       setCurrentView('list')
     } catch (error) {
-      console.error('Failed to save donation:', error)
       alert('保存に失敗しました')
     }
   }
@@ -79,10 +64,27 @@ function App() {
         await donationApi.deleteDonation(selectedDonation.id)
         setCurrentView('list')
       } catch (error) {
-        console.error('Failed to delete donation:', error)
         alert('削除に失敗しました')
       }
     }
+  }
+
+  const handleAdminClick = () => {
+    setCurrentView('admin')
+  }
+
+  const handleAdminBack = () => {
+    setCurrentView('list')
+  }
+
+  if (loading) {
+    return (
+      <div className="App">
+        <div className="loading-container">
+          <p>読み込み中...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -99,14 +101,33 @@ function App() {
               <h1>社内寄贈物管理システム</h1>
               <div className="user-info">
                 <span>ログイン中: {session.user.email}</span>
-                <button onClick={() => supabase.auth.signOut()} className="sign-out-btn">
+                {isAdmin && (
+                  <button
+                    onClick={handleAdminClick}
+                    className="admin-btn"
+                    style={{
+                      marginLeft: '8px',
+                      padding: '8px 16px',
+                      backgroundColor: '#6f42c1',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    管理ダッシュボード
+                  </button>
+                )}
+                <button onClick={signOut} className="sign-out-btn">
                   ログアウト
                 </button>
               </div>
             </div>
           </header>
           <main className="app-main">
-            {currentView === 'list' ? (
+            {currentView === 'admin' ? (
+              <AuditLogDashboard onBack={handleAdminBack} />
+            ) : currentView === 'list' ? (
               <DonationSearch
                 onCreate={handleAdd}
                 onDetail={handleDetail}

@@ -2,6 +2,7 @@ import { OpenAPIRoute, Str } from "chanfana";
 import { z } from "zod";
 import { type AppContext } from "../types";
 import { createSupabaseClient } from "../lib/supabase";
+import { logCrudOperation, logApiError } from "../lib/auditLog";
 
 export class DonationUpdate extends OpenAPIRoute {
     schema = {
@@ -61,6 +62,13 @@ export class DonationUpdate extends OpenAPIRoute {
         // Remove image_url, image_urls, tags from donation object before updating donations table
         const { image_url, image_urls, tags, ...updateData } = donation;
 
+        // 更新前のデータを取得（監査ログ用）
+        const { data: oldDonation } = await supabase
+            .from('donations')
+            .select('title, category_id, status, location_id')
+            .eq('id', id)
+            .single();
+
         const { data: updatedDonation, error } = await supabase
             .from('donations')
             .update(updateData)
@@ -69,6 +77,7 @@ export class DonationUpdate extends OpenAPIRoute {
             .single();
 
         if (error) {
+            await logApiError(c, error.message, 500);
             return c.json({
                 success: false,
                 error: error.message,
@@ -125,6 +134,12 @@ export class DonationUpdate extends OpenAPIRoute {
                 await supabase.from('donation_tags').insert(tagsToInsert);
             }
         }
+
+        // 監査ログ記録
+        await logCrudOperation(c, "DONATION_UPDATE", "donations", id, {
+            oldValues: oldDonation ?? undefined,
+            newValues: updateData,
+        });
 
         return c.json({
             success: true,

@@ -2,6 +2,7 @@ import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
 import { type AppContext } from "../types";
 import { createSupabaseClient } from "../lib/supabase";
+import { logCrudOperation, logApiError } from "../lib/auditLog";
 
 export class DonationCreate extends OpenAPIRoute {
     schema = {
@@ -75,6 +76,7 @@ export class DonationCreate extends OpenAPIRoute {
             .single();
 
         if (error) {
+            await logApiError(c, error.message, 500);
             return c.json({
                 success: false,
                 error: error.message,
@@ -103,6 +105,15 @@ export class DonationCreate extends OpenAPIRoute {
             }));
             await supabase.from('donation_tags').insert(tagsToInsert);
         }
+
+        // 監査ログ記録
+        await logCrudOperation(c, "DONATION_CREATE", "donations", newDonation.id, {
+            newValues: {
+                title: donation.title,
+                category_id: donation.category_id,
+                status: donation.status,
+            },
+        });
 
         return c.json({
             success: true,
