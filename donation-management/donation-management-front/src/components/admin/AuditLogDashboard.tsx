@@ -31,10 +31,13 @@ export function AuditLogDashboard({ onBack }: AuditLogDashboardProps) {
     setError(null);
 
     try {
+      console.log('Fetching audit logs with filters:', filters);
       const response = await adminApi.getAuditLogs(filters);
+      console.log('Audit logs response:', response);
       setLogs(response.data);
       setPagination(response.pagination);
     } catch (err) {
+      console.error('Failed to fetch audit logs:', err);
       const message = err instanceof Error ? err.message : 'ログの取得に失敗しました';
       setError(message);
       setLogs([]);

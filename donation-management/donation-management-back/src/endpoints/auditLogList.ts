@@ -64,11 +64,16 @@ export class AuditLogList extends OpenAPIRoute {
 		}
 
 		// 管理者権限チェック
-		const { data: userData } = await supabase
+		const { data: userData, error: roleError } = await supabase
 			.from("users")
 			.select("role")
 			.eq("id", user.id)
 			.single();
+
+		if (roleError) {
+			console.error("Failed to fetch user role:", roleError);
+			return c.json({ success: false, error: "ユーザー情報の取得に失敗しました" }, 500);
+		}
 
 		if (!userData || !["admin", "system"].includes(userData.role)) {
 			return c.json({ success: false, error: "管理者権限が必要です" }, 403);
