@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { authLogger } from '../services/authLogger'
 
 export default function AuthComponent() {
   const [loading, setLoading] = useState(false)
@@ -20,7 +21,11 @@ export default function AuthComponent() {
         setMessage('確認メールを送信しました。メールを確認してください。')
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
+        if (error) {
+          await authLogger.logLoginFailure(email, error.message)
+          throw error
+        }
+        await authLogger.logLoginSuccess(email)
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'エラーが発生しました'
@@ -38,7 +43,11 @@ export default function AuthComponent() {
           redirectTo: window.location.origin
         }
       })
-      if (error) throw error
+      if (error) {
+        await authLogger.logAuthError(null, `OAuth ${provider} login failed: ${error.message}`)
+        throw error
+      }
+      // OAuth成功時のログはリダイレクト後に記録
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'エラーが発生しました'
       setMessage(errorMessage)
@@ -170,17 +179,22 @@ export default function AuthComponent() {
         <button
           onClick={async () => {
             setLoading(true);
+            const devEmail = 'admin@company.com';
             try {
               const { error } = await supabase.auth.signInWithPassword({
-                email: 'admin@company.com',
+                email: devEmail,
                 password: 'password',
               });
-              if (error) throw error;
+              if (error) {
+                await authLogger.logLoginFailure(devEmail, error.message);
+                throw error;
+              }
+              await authLogger.logLoginSuccess(devEmail);
             } catch {
               // If sign in fails, try to sign up (for dev convenience)
               try {
                 const { error: signUpError } = await supabase.auth.signUp({
-                  email: 'admin@company.com',
+                  email: devEmail,
                   password: 'password',
                 });
                 if (signUpError) throw signUpError;

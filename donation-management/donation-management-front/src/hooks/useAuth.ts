@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { authLogger } from '../services/authLogger';
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
@@ -40,7 +41,15 @@ export function useAuth() {
     loadUserData();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        // OAuth認証成功時のみログ記録（既存セッション読み込み時は記録しない）
+        if (event === 'SIGNED_IN' && session?.user?.email) {
+          // ログ記録を非同期で実行（失敗してもUI処理を止めない）
+          authLogger.logLoginSuccess(session.user.email).catch(err => {
+            console.error('Failed to log login:', err);
+          });
+        }
+
         setSession(session);
 
         if (session?.user?.id) {
@@ -73,6 +82,10 @@ export function useAuth() {
   const isAdmin = userRole === 'admin' || userRole === 'system';
 
   const signOut = async () => {
+    const email = session?.user?.email;
+    if (email) {
+      await authLogger.logLogout(email);
+    }
     await supabase.auth.signOut();
     setSession(null);
     setUserRole(null);
