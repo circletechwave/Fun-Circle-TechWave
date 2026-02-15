@@ -2,6 +2,49 @@ import type { Donation, Category, Location, SearchFilters, PaginationInfo, Tag }
 
 import { supabase } from '../lib/supabase';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+
+/**
+ * 認証トークンを取得
+ */
+async function getAuthToken(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
+
+/**
+ * API用のfetchラッパー
+ */
+async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = await getAuthToken();
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options.headers as Record<string, string>,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `APIエラー: ${response.status}`);
+  }
+
+  return response.json();
+}
+
 interface DonationListResponse {
   success: boolean;
   data: Donation[];
@@ -168,54 +211,12 @@ export const donationApi = {
 
   async createDonation(donation: Partial<Donation>): Promise<{ success: boolean; data: Donation; error?: string }> {
     try {
-      // Remove nested objects and undefined fields before insert
-      const {
-        category, sub_category, location,
-        id, created_at, updated_at,
-        image_urls, tags, image_url,
-        ...insertData
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } = donation as any;
+      const response = await apiFetch<{ success: boolean; data: Donation }>('/api/donations', {
+        method: 'POST',
+        body: JSON.stringify(donation),
+      });
 
-      // Add created_by (using current user if available, otherwise dummy)
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id || '00000000-0000-4000-8000-000000000001';
-
-      const { data, error } = await supabase
-        .from('donations')
-        .insert({ ...insertData, created_by: userId })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const newDonationId = data.id;
-
-      // Insert images
-      if (image_urls && image_urls.length > 0) {
-        const imagesToInsert = image_urls.map((url: string, index: number) => ({
-          donation_id: newDonationId,
-          image_url: url,
-          display_order: index + 1
-        }));
-        const { error: imgError } = await supabase.from('donation_images').insert(imagesToInsert);
-        if (imgError) throw imgError;
-      }
-
-      // Insert tags
-      if (tags && tags.length > 0) {
-        // tags can be array of strings (IDs) or Tag objects
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tagIds = tags.map((t: any) => typeof t === 'string' ? t : t.id);
-        const tagsToInsert = tagIds.map((tagId: string) => ({
-          donation_id: newDonationId,
-          tag_id: tagId
-        }));
-        const { error: tagError } = await supabase.from('donation_tags').insert(tagsToInsert);
-        if (tagError) throw tagError;
-      }
-
-      return { success: true, data };
+      return { success: true, data: response.data };
     } catch (error) {
       return {
         success: false,
@@ -227,54 +228,12 @@ export const donationApi = {
 
   async updateDonation(id: string, donation: Partial<Donation>): Promise<{ success: boolean; data: Donation; error?: string }> {
     try {
-      // リレーションデータや読み取り専用フィールドを除外
-      const donationWithMeta = donation as Partial<Donation> & { created_by?: string; deleted_at?: string; avg_rating?: number; review_count?: number };
-      const {
-        category, sub_category, location,
-        id: _id, created_at, updated_at, created_by,
-        image_urls, tags, avg_rating, review_count,
-        image_url,
-        deleted_at,
-        ...updateData
-      } = donationWithMeta;
+      const response = await apiFetch<{ success: boolean; data: Donation }>(`/api/donations/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(donation),
+      });
 
-      const { data, error } = await supabase
-        .from('donations')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update images (Delete all and insert new)
-      if (image_urls) {
-        await supabase.from('donation_images').delete().eq('donation_id', id);
-        if (image_urls.length > 0) {
-          const imagesToInsert = image_urls.map((url: string, index: number) => ({
-            donation_id: id,
-            image_url: url,
-            display_order: index + 1
-          }));
-          await supabase.from('donation_images').insert(imagesToInsert);
-        }
-      }
-
-      // Update tags (Delete all and insert new)
-      if (tags) {
-        await supabase.from('donation_tags').delete().eq('donation_id', id);
-        if (tags.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const tagIds = tags.map((t: any) => typeof t === 'string' ? t : t.id);
-          const tagsToInsert = tagIds.map((tagId: string) => ({
-            donation_id: id,
-            tag_id: tagId
-          }));
-          await supabase.from('donation_tags').insert(tagsToInsert);
-        }
-      }
-
-      return { success: true, data };
+      return { success: true, data: response.data };
     } catch (error) {
       return {
         success: false,
@@ -286,12 +245,10 @@ export const donationApi = {
 
   async deleteDonation(id: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
-        .from('donations')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+      await apiFetch<{ success: boolean }>(`/api/donations/${id}`, {
+        method: 'DELETE',
+      });
 
-      if (error) throw error;
       return { success: true };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : '削除に失敗しました' };
