@@ -9,10 +9,18 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const loadUserData = async () => {
       try {
         console.log('[useAuth] Starting loadUserData');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('[useAuth] getSession completed, error:', sessionError, 'session:', session?.user?.email || 'No session');
+
+        if (!mounted) {
+          console.log('[useAuth] Component unmounted, aborting');
+          return;
+        }
 
         if (sessionError) {
           console.error('[useAuth] Session error:', sessionError);
@@ -22,7 +30,7 @@ export function useAuth() {
           return;
         }
 
-        console.log('[useAuth] Session loaded:', session?.user?.email || 'No session');
+        console.log('[useAuth] Setting session state');
         setSession(session);
 
         if (session?.user?.id) {
@@ -32,6 +40,13 @@ export function useAuth() {
             .select('role')
             .eq('id', session.user.id)
             .single();
+
+          console.log('[useAuth] Role fetch completed, error:', error, 'data:', data);
+
+          if (!mounted) {
+            console.log('[useAuth] Component unmounted during role fetch, aborting');
+            return;
+          }
 
           if (error) {
             console.error('[useAuth] Failed to fetch user role:', error);
@@ -47,11 +62,17 @@ export function useAuth() {
         }
       } catch (error) {
         console.error('[useAuth] Error in loadUserData:', error);
-        setSession(null);
-        setUserRole(null);
+        if (mounted) {
+          setSession(null);
+          setUserRole(null);
+        }
       } finally {
-        console.log('[useAuth] Setting loading to false');
-        setLoading(false);
+        if (mounted) {
+          console.log('[useAuth] Setting loading to false');
+          setLoading(false);
+        } else {
+          console.log('[useAuth] Component unmounted, skipping loading state update');
+        }
       }
     };
 
@@ -98,7 +119,10 @@ export function useAuth() {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const isAdmin = userRole === 'admin' || userRole === 'system';
