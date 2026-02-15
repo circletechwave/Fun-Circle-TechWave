@@ -15,16 +15,28 @@ export class DonationCreate extends OpenAPIRoute {
                         schema: z.object({
                             title: z.string(),
                             category_id: z.string(),
-                            sub_category_id: z.string().optional(),
+                            sub_category_id: z.string().nullable().optional(),
                             location_id: z.string(),
                             status: z.enum(["available", "lending", "maintenance", "lost"]),
                             condition: z.enum(["new", "good", "fair", "poor"]).optional(),
-                            description: z.string().optional(),
-                            donor_name: z.string().optional(),
+                            description: z.string().nullable().optional(),
+                            donor_name: z.string().nullable().optional(),
                             donated_date: z.string(),
-                            image_url: z.string().optional(),
+                            image_url: z.string().nullable().optional(),
                             image_urls: z.array(z.string()).optional(),
-                            tags: z.array(z.string()).optional(),
+                            // タグはIDの配列またはオブジェクトの配列を受け入れる
+                            tags: z.array(z.union([
+                                z.string(),
+                                z.object({ id: z.string(), name: z.string().optional() })
+                            ])).optional(),
+                            // 書籍情報
+                            isbn: z.string().nullable().optional(),
+                            author: z.string().nullable().optional(),
+                            publisher: z.string().nullable().optional(),
+                            published_year: z.number().nullable().optional(),
+                            // 製品情報
+                            manufacturer: z.string().nullable().optional(),
+                            model_number: z.string().nullable().optional(),
                         }),
                     },
                 },
@@ -71,6 +83,14 @@ export class DonationCreate extends OpenAPIRoute {
                 donor_name: donation.donor_name,
                 donated_date: donation.donated_date,
                 created_by: DUMMY_USER_ID,
+                // 書籍情報
+                isbn: donation.isbn,
+                author: donation.author,
+                publisher: donation.publisher,
+                published_year: donation.published_year,
+                // 製品情報
+                manufacturer: donation.manufacturer,
+                model_number: donation.model_number,
             })
             .select('id')
             .single();
@@ -99,7 +119,11 @@ export class DonationCreate extends OpenAPIRoute {
         }
 
         if (donation.tags && donation.tags.length > 0) {
-            const tagsToInsert = donation.tags.map(tagId => ({
+            // タグがオブジェクトの場合はIDを抽出、文字列の場合はそのまま使用
+            const tagIds = donation.tags.map(tag =>
+                typeof tag === 'string' ? tag : tag.id
+            );
+            const tagsToInsert = tagIds.map(tagId => ({
                 donation_id: newDonation.id,
                 tag_id: tagId
             }));
