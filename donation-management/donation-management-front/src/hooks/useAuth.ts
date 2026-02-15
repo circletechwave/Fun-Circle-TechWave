@@ -9,19 +9,29 @@ export function useAuth() {
 
   useEffect(() => {
     const loadUserData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
 
-      if (session?.user?.id) {
-        const { data } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
+        if (session?.user?.id) {
+          const { data, error } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
 
-        setUserRole(data?.role || 'user');
+          if (error) {
+            console.error('Failed to fetch user role:', error);
+            setUserRole('user');
+          } else {
+            setUserRole(data?.role || 'user');
+          }
+        }
+      } catch (error) {
+        console.error('Error in loadUserData:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadUserData();
@@ -31,13 +41,23 @@ export function useAuth() {
         setSession(session);
 
         if (session?.user?.id) {
-          const { data } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
+          try {
+            const { data, error } = await supabase
+              .from('users')
+              .select('role')
+              .eq('id', session.user.id)
+              .single();
 
-          setUserRole(data?.role || 'user');
+            if (error) {
+              console.error('Failed to fetch user role:', error);
+              setUserRole('user');
+            } else {
+              setUserRole(data?.role || 'user');
+            }
+          } catch (error) {
+            console.error('Error fetching user role:', error);
+            setUserRole('user');
+          }
         } else {
           setUserRole(null);
         }
