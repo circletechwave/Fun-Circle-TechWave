@@ -14,6 +14,7 @@ export function useAuth() {
         setSession(session);
 
         if (session?.user?.id) {
+          console.log('Fetching user role for:', session.user.id);
           const { data, error } = await supabase
             .from('users')
             .select('role')
@@ -22,8 +23,10 @@ export function useAuth() {
 
           if (error) {
             console.error('Failed to fetch user role:', error);
+            console.error('Error details:', JSON.stringify(error, null, 2));
             setUserRole('user');
           } else {
+            console.log('User role data:', data);
             setUserRole(data?.role || 'user');
           }
         }
