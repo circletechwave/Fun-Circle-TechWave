@@ -11,13 +11,17 @@ export const authLogger = {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      await supabase.from('audit_logs').insert({
+      const { error } = await supabase.from('audit_logs').insert({
         user_id: user?.id,
         user_email: email,
         action: 'LOGIN_SUCCESS',
         ip_address: null, // フロントエンドからは取得不可
         user_agent: navigator.userAgent,
-      });
+      }).select();
+
+      if (error) {
+        console.error('Failed to log login success:', error);
+      }
     } catch (error) {
       console.error('Failed to log login success:', error);
     }
@@ -35,10 +39,13 @@ export const authLogger = {
         action: 'LOGIN_FAILURE',
         error_message: errorMessage,
         user_agent: navigator.userAgent,
-      });
+      }).select();
 
       if (error) {
         console.error('Supabase error when logging login failure:', error);
+        console.error('Error code:', error.code);
+        console.error('Error details:', error.details);
+        console.error('Error hint:', error.hint);
         throw error;
       }
 
@@ -55,12 +62,16 @@ export const authLogger = {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      await supabase.from('audit_logs').insert({
+      const { error } = await supabase.from('audit_logs').insert({
         user_id: user?.id,
         user_email: email,
         action: 'LOGOUT',
         user_agent: navigator.userAgent,
-      });
+      }).select();
+
+      if (error) {
+        console.error('Failed to log logout:', error);
+      }
     } catch (error) {
       console.error('Failed to log logout:', error);
     }
@@ -71,13 +82,17 @@ export const authLogger = {
    */
   async logAuthError(email: string | null, errorMessage: string) {
     try {
-      await supabase.from('audit_logs').insert({
+      const { error } = await supabase.from('audit_logs').insert({
         user_id: null,
         user_email: email,
         action: 'AUTH_ERROR',
         error_message: errorMessage,
         user_agent: navigator.userAgent,
-      });
+      }).select();
+
+      if (error) {
+        console.error('Failed to log auth error:', error);
+      }
     } catch (error) {
       console.error('Failed to log auth error:', error);
     }
