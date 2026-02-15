@@ -23,7 +23,14 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // トークン更新イベントを監視
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('✅ トークンが自動更新されました')
+      }
+      if (event === 'SIGNED_OUT') {
+        console.log('🔒 セッションが終了しました')
+      }
       setSession(session)
     })
 
