@@ -28,13 +28,21 @@ export const authLogger = {
    */
   async logLoginFailure(email: string, errorMessage: string) {
     try {
-      await supabase.from('audit_logs').insert({
+      console.log('Attempting to log login failure for:', email);
+      const { data, error } = await supabase.from('audit_logs').insert({
         user_id: null,
         user_email: email,
         action: 'LOGIN_FAILURE',
         error_message: errorMessage,
         user_agent: navigator.userAgent,
       });
+
+      if (error) {
+        console.error('Supabase error when logging login failure:', error);
+        throw error;
+      }
+
+      console.log('Successfully logged login failure:', data);
     } catch (error) {
       console.error('Failed to log login failure:', error);
     }

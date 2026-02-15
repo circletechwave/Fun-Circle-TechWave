@@ -11,11 +11,22 @@ export function useAuth() {
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[useAuth] Starting loadUserData');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error('[useAuth] Session error:', sessionError);
+          setSession(null);
+          setUserRole(null);
+          setLoading(false);
+          return;
+        }
+
+        console.log('[useAuth] Session loaded:', session?.user?.email || 'No session');
         setSession(session);
 
         if (session?.user?.id) {
-          console.log('Fetching user role for:', session.user.id);
+          console.log('[useAuth] Fetching user role for:', session.user.id);
           const { data, error } = await supabase
             .from('users')
             .select('role')
@@ -23,17 +34,23 @@ export function useAuth() {
             .single();
 
           if (error) {
-            console.error('Failed to fetch user role:', error);
-            console.error('Error details:', JSON.stringify(error, null, 2));
+            console.error('[useAuth] Failed to fetch user role:', error);
+            console.error('[useAuth] Error details:', JSON.stringify(error, null, 2));
             setUserRole('user');
           } else {
-            console.log('User role data:', data);
+            console.log('[useAuth] User role data:', data);
             setUserRole(data?.role || 'user');
           }
+        } else {
+          console.log('[useAuth] No session, setting userRole to null');
+          setUserRole(null);
         }
       } catch (error) {
-        console.error('Error in loadUserData:', error);
+        console.error('[useAuth] Error in loadUserData:', error);
+        setSession(null);
+        setUserRole(null);
       } finally {
+        console.log('[useAuth] Setting loading to false');
         setLoading(false);
       }
     };
@@ -42,11 +59,13 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('[useAuth] Auth state change event:', event, 'User:', session?.user?.email || 'No user');
+
         // OAuth認証成功時のみログ記録（既存セッション読み込み時は記録しない）
         if (event === 'SIGNED_IN' && session?.user?.email) {
           // ログ記録を非同期で実行（失敗してもUI処理を止めない）
           authLogger.logLoginSuccess(session.user.email).catch(err => {
-            console.error('Failed to log login:', err);
+            console.error('[useAuth] Failed to log login:', err);
           });
         }
 
@@ -54,6 +73,7 @@ export function useAuth() {
 
         if (session?.user?.id) {
           try {
+            console.log('[useAuth] Fetching role for user on state change:', session.user.id);
             const { data, error } = await supabase
               .from('users')
               .select('role')
@@ -61,16 +81,18 @@ export function useAuth() {
               .single();
 
             if (error) {
-              console.error('Failed to fetch user role:', error);
+              console.error('[useAuth] Failed to fetch user role on state change:', error);
               setUserRole('user');
             } else {
+              console.log('[useAuth] Role fetched on state change:', data?.role);
               setUserRole(data?.role || 'user');
             }
           } catch (error) {
-            console.error('Error fetching user role:', error);
+            console.error('[useAuth] Error fetching user role on state change:', error);
             setUserRole('user');
           }
         } else {
+          console.log('[useAuth] No session on state change, clearing userRole');
           setUserRole(null);
         }
       }
