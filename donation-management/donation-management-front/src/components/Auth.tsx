@@ -25,7 +25,7 @@ export default function AuthComponent() {
           await authLogger.logLoginFailure(email, error.message)
           throw error
         }
-        await authLogger.logLoginSuccess(email)
+        // ログイン成功のログ記録はuseAuthのSIGNED_INイベントで行う
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'エラーが発生しました'
@@ -189,7 +189,7 @@ export default function AuthComponent() {
                 await authLogger.logLoginFailure(devEmail, error.message);
                 throw error;
               }
-              await authLogger.logLoginSuccess(devEmail);
+              // ログイン成功のログ記録はuseAuthのSIGNED_INイベントで行う
             } catch {
               // If sign in fails, try to sign up (for dev convenience)
               try {
