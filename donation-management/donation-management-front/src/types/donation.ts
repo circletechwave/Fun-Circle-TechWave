@@ -2,7 +2,7 @@ export interface Donation {
   id: string;
   title: string;
   category_id: string;
-  sub_category_id?: string;
+  sub_category_id?: string | null;
   location_id: string;
   status: 'available' | 'lending' | 'maintenance' | 'lost';
   condition?: 'new' | 'good' | 'fair' | 'poor';

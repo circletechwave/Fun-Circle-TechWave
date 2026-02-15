@@ -262,7 +262,7 @@ export const donationApi = {
 
       // Convert empty strings to null for optional foreign key fields
       if (updateData.sub_category_id === '') {
-        updateData.sub_category_id = null;
+        (updateData as { sub_category_id?: string | null }).sub_category_id = null;
       }
 
       // eslint-disable-next-line no-console
