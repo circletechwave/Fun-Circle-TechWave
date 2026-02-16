@@ -12,12 +12,13 @@
 INSERT INTO users (id, email, name, role, avatar_url, department, is_active, last_login_at, created_at, updated_at, deleted_at) VALUES
   ('ec59df7d-1cd3-4b8b-a3c8-9c6de6af64fd', 'test@company.com', 'テスト太郎', 'user', NULL, '人事部', true, NULL, '2025-09-04 01:34:15.17955+00', '2025-09-04 04:26:01.000691+00', NULL),
   ('0bf9509d-24fe-42b2-8cbd-8a82a3ca82d3', 'yamada@company.com', '山田美咲', 'user', NULL, 'マーケティング部', true, NULL, '2025-09-04 04:19:23.079962+00', '2025-09-04 04:24:42.538912+00', NULL),
-  ('33ceed5e-3dbb-48c1-bc9f-83f4f4d5f79e', 'admin@company.com', '管理者太郎', 'admin', NULL, 'IT部', true, NULL, '2025-09-04 04:16:50.667281+00', '2025-09-04 04:24:50.275077+00', NULL),
+
   ('7778b5eb-b559-4239-aecd-97f4d49c333b', 'ito@company.com', '伊藤健一', 'user', NULL, 'IT部', true, NULL, '2025-09-04 04:19:23.079962+00', '2025-09-04 04:24:55.489124+00', NULL),
   ('a9b73bec-57e9-4b67-823d-1d256ad5ef0c', 'tanaka@company.com', '田中花子', 'user', NULL, '開発部', true, NULL, '2025-09-04 04:19:23.079962+00', '2025-09-04 04:24:59.902696+00', NULL),
   ('b3f11c4a-0d57-450c-a429-a7138e1f3d75', 'watanabe@company.com', '渡辺三郎', 'user', NULL, '営業部', true, NULL, '2025-09-04 04:19:23.079962+00', '2025-09-04 04:25:03.373558+00', NULL),
   ('cdd07bde-736c-44ac-9b89-2472eb43537f', 'kobayashi@company.com', '小林優子', 'user', NULL, '人事部', true, NULL, '2025-09-04 04:19:23.079962+00', '2025-09-04 04:25:05.965227+00', NULL),
-  ('e13f2687-fd8e-4f96-a360-871858c1acad', 'suzuki@company.com', '鈴木次郎', 'user', NULL, 'デザイン部', true, NULL, '2025-09-04 04:19:23.079962+00', '2025-09-04 04:25:11.205093+00', NULL)
+  ('e13f2687-fd8e-4f96-a360-871858c1acad', 'suzuki@company.com', '鈴木次郎', 'user', NULL, 'デザイン部', true, NULL, '2025-09-04 04:19:23.079962+00', '2025-09-04 04:25:11.205093+00', NULL),
+  ('33ceed5e-3dbb-48c1-bc9f-83f4f4d5f79e', 'admin@company.com', '管理者太郎', 'admin', NULL, '管理部', true, NULL, '2025-09-04 04:19:23.079962+00', '2025-09-04 04:25:11.205093+00', NULL)
 ON CONFLICT (id) DO NOTHING;
 
 
