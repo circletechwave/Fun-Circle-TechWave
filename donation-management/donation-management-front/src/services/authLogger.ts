@@ -32,8 +32,12 @@ export const authLogger = {
    */
   async logLoginFailure(email: string, errorMessage: string) {
     try {
-      console.log('Attempting to log login failure for:', email);
-      const { data, error } = await supabase.from('audit_logs').insert({
+      console.log('[authLogger] Attempting to log login failure for:', email);
+      console.log('[authLogger] Error message:', errorMessage);
+      console.log('[authLogger] User agent:', navigator.userAgent);
+
+      console.log('[authLogger] Calling supabase.from(audit_logs).insert()...');
+      const insertPromise = supabase.from('audit_logs').insert({
         user_id: null,
         user_email: email,
         action: 'LOGIN_FAILURE',
@@ -41,17 +45,26 @@ export const authLogger = {
         user_agent: navigator.userAgent,
       }).select();
 
+      console.log('[authLogger] Waiting for insert to complete...');
+      const { data, error } = await insertPromise;
+      console.log('[authLogger] Insert completed. Error:', error, 'Data:', data);
+
       if (error) {
-        console.error('Supabase error when logging login failure:', error);
-        console.error('Error code:', error.code);
-        console.error('Error details:', error.details);
-        console.error('Error hint:', error.hint);
+        console.error('[authLogger] Supabase error when logging login failure:', error);
+        console.error('[authLogger] Error code:', error.code);
+        console.error('[authLogger] Error details:', error.details);
+        console.error('[authLogger] Error hint:', error.hint);
+        console.error('[authLogger] Full error object:', JSON.stringify(error, null, 2));
         throw error;
       }
 
-      console.log('Successfully logged login failure:', data);
+      console.log('[authLogger] Successfully logged login failure:', data);
     } catch (error) {
-      console.error('Failed to log login failure:', error);
+      console.error('[authLogger] Failed to log login failure (caught):', error);
+      if (error instanceof Error) {
+        console.error('[authLogger] Error message:', error.message);
+        console.error('[authLogger] Error stack:', error.stack);
+      }
     }
   },
 
