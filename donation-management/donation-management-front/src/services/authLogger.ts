@@ -34,20 +34,14 @@ export const authLogger = {
     try {
       console.log('[authLogger] Attempting to log login failure for:', email);
 
-      // Prefer=return=minimal を使用してレスポンスを返さないようにする
-      const { error } = await supabase.from('audit_logs').insert(
-        {
-          user_id: null,
-          user_email: email,
-          action: 'LOGIN_FAILURE',
-          error_message: errorMessage,
-          user_agent: navigator.userAgent,
-        },
-        {
-          // レスポンスを返さない（SELECTを回避）
-          count: null,
-        }
-      );
+      // .select()を使わない（RLSポリシーでSELECTが拒否されるため）
+      const { error } = await supabase.from('audit_logs').insert({
+        user_id: null,
+        user_email: email,
+        action: 'LOGIN_FAILURE',
+        error_message: errorMessage,
+        user_agent: navigator.userAgent,
+      });
 
       if (error) {
         console.error('[authLogger] Supabase error when logging login failure:', error);
@@ -89,20 +83,14 @@ export const authLogger = {
    */
   async logAuthError(email: string | null, errorMessage: string) {
     try {
-      // Prefer=return=minimal を使用してレスポンスを返さないようにする
-      const { error } = await supabase.from('audit_logs').insert(
-        {
-          user_id: null,
-          user_email: email,
-          action: 'AUTH_ERROR',
-          error_message: errorMessage,
-          user_agent: navigator.userAgent,
-        },
-        {
-          // レスポンスを返さない（SELECTを回避）
-          count: null,
-        }
-      );
+      // .select()を使わない（RLSポリシーでSELECTが拒否されるため）
+      const { error } = await supabase.from('audit_logs').insert({
+        user_id: null,
+        user_email: email,
+        action: 'AUTH_ERROR',
+        error_message: errorMessage,
+        user_agent: navigator.userAgent,
+      });
 
       if (error) {
         console.error('Failed to log auth error:', error);
