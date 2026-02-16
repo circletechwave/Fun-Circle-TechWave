@@ -17,7 +17,7 @@ export const authLogger = {
         action: 'LOGIN_SUCCESS',
         ip_address: null, // フロントエンドからは取得不可
         user_agent: navigator.userAgent,
-      }).select();
+      });
 
       if (error) {
         console.error('Failed to log login success:', error);
@@ -68,7 +68,7 @@ export const authLogger = {
         user_email: email,
         action: 'LOGOUT',
         user_agent: navigator.userAgent,
-      }).select();
+      });
 
       if (error) {
         console.error('Failed to log logout:', error);

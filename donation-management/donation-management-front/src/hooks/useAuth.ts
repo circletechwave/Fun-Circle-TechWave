@@ -82,13 +82,8 @@ export function useAuth() {
       async (event, session) => {
         console.log('[useAuth] Auth state change event:', event, 'User:', session?.user?.email || 'No user');
 
-        // OAuth認証成功時のみログ記録（既存セッション読み込み時は記録しない）
-        if (event === 'SIGNED_IN' && session?.user?.email) {
-          // ログ記録を非同期で実行（失敗してもUI処理を止めない）
-          authLogger.logLoginSuccess(session.user.email).catch(err => {
-            console.error('[useAuth] Failed to log login:', err);
-          });
-        }
+        // ログ記録はAuth.tsxで明示的に行うため、ここでは行わない
+        // （既存セッション復元時もSIGNED_INが発火してしまうため）
 
         setSession(session);
 
