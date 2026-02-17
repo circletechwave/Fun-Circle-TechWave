@@ -11,6 +11,14 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true;
 
+    // 安全策: 10秒経過してもloadingがtrueの場合、強制的にfalseにする
+    const timeoutId = setTimeout(() => {
+      if (mounted) {
+        console.warn('[useAuth] Loading timeout - forcing loading to false');
+        setLoading(false);
+      }
+    }, 10000);
+
     const loadUserData = async () => {
       try {
         console.log('[useAuth] Starting loadUserData');
@@ -70,6 +78,7 @@ export function useAuth() {
         if (mounted) {
           console.log('[useAuth] Setting loading to false');
           setLoading(false);
+          clearTimeout(timeoutId); // タイムアウトをクリア
         } else {
           console.log('[useAuth] Component unmounted, skipping loading state update');
         }
@@ -116,6 +125,7 @@ export function useAuth() {
 
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
