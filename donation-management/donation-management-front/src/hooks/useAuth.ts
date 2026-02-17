@@ -10,86 +10,18 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
+    let initialLoadComplete = false;
 
-    // 安全策: 10秒経過してもloadingがtrueの場合、強制的にfalseにする
-    const timeoutId = setTimeout(() => {
-      if (mounted) {
-        console.warn('[useAuth] Loading timeout - forcing loading to false');
-        setLoading(false);
-      }
-    }, 10000);
-
-    const loadUserData = async () => {
-      try {
-        console.log('[useAuth] Starting loadUserData');
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        console.log('[useAuth] getSession completed, error:', sessionError, 'session:', session?.user?.email || 'No session');
-
-        if (!mounted) {
-          console.log('[useAuth] Component unmounted, aborting');
-          return;
-        }
-
-        if (sessionError) {
-          console.error('[useAuth] Session error:', sessionError);
-          setSession(null);
-          setUserRole(null);
-          setLoading(false);
-          return;
-        }
-
-        console.log('[useAuth] Setting session state');
-        setSession(session);
-
-        if (session?.user?.id) {
-          console.log('[useAuth] Fetching user role for:', session.user.id);
-          const { data, error } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-
-          console.log('[useAuth] Role fetch completed, error:', error, 'data:', data);
-
-          if (!mounted) {
-            console.log('[useAuth] Component unmounted during role fetch, aborting');
-            return;
-          }
-
-          if (error) {
-            console.error('[useAuth] Failed to fetch user role:', error);
-            console.error('[useAuth] Error details:', JSON.stringify(error, null, 2));
-            setUserRole('user');
-          } else {
-            console.log('[useAuth] User role data:', data);
-            setUserRole(data?.role || 'user');
-          }
-        } else {
-          console.log('[useAuth] No session, setting userRole to null');
-          setUserRole(null);
-        }
-      } catch (error) {
-        console.error('[useAuth] Error in loadUserData:', error);
-        if (mounted) {
-          setSession(null);
-          setUserRole(null);
-        }
-      } finally {
-        if (mounted) {
-          console.log('[useAuth] Setting loading to false');
-          setLoading(false);
-          clearTimeout(timeoutId); // タイムアウトをクリア
-        } else {
-          console.log('[useAuth] Component unmounted, skipping loading state update');
-        }
-      }
-    };
-
-    loadUserData();
+    console.log('[useAuth] Initializing auth listener');
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('[useAuth] Auth state change event:', event, 'User:', session?.user?.email || 'No user');
+
+        if (!mounted) {
+          console.log('[useAuth] Component unmounted, ignoring auth state change');
+          return;
+        }
 
         // ログ記録はAuth.tsxで明示的に行うため、ここでは行わない
         // （既存セッション復元時もSIGNED_INが発火してしまうため）
@@ -105,6 +37,11 @@ export function useAuth() {
               .eq('id', session.user.id)
               .single();
 
+            if (!mounted) {
+              console.log('[useAuth] Component unmounted during role fetch');
+              return;
+            }
+
             if (error) {
               console.error('[useAuth] Failed to fetch user role on state change:', error);
               setUserRole('user');
@@ -114,18 +51,26 @@ export function useAuth() {
             }
           } catch (error) {
             console.error('[useAuth] Error fetching user role on state change:', error);
-            setUserRole('user');
+            if (mounted) {
+              setUserRole('user');
+            }
           }
         } else {
           console.log('[useAuth] No session on state change, clearing userRole');
           setUserRole(null);
+        }
+
+        // 初回ロード完了をマーク
+        if (!initialLoadComplete) {
+          console.log('[useAuth] Initial load complete, setting loading to false');
+          initialLoadComplete = true;
+          setLoading(false);
         }
       }
     );
 
     return () => {
       mounted = false;
-      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
