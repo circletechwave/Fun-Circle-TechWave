@@ -31,11 +31,19 @@ export function useAuth() {
         if (session?.user?.id) {
           try {
             console.log('[useAuth] Fetching role for user on state change:', session.user.id);
-            const { data, error } = await supabase
+
+            // タイムアウト付きでロール取得
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Role fetch timeout')), 5000)
+            );
+
+            const fetchPromise = supabase
               .from('users')
               .select('role')
               .eq('id', session.user.id)
               .single();
+
+            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
             if (!mounted) {
               console.log('[useAuth] Component unmounted during role fetch');
@@ -52,6 +60,7 @@ export function useAuth() {
           } catch (error) {
             console.error('[useAuth] Error fetching user role on state change:', error);
             if (mounted) {
+              console.warn('[useAuth] Setting default role to "user" due to error');
               setUserRole('user');
             }
           }
