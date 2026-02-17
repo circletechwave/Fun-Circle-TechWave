@@ -18,7 +18,7 @@ export const authLogger = {
         ip_address: null,
         user_agent: navigator.userAgent,
       });
-    } catch (error) {
+    } catch {
       // エラーは無視（監査ログの失敗でユーザー体験を損なわない）
     }
   },
@@ -35,7 +35,7 @@ export const authLogger = {
         error_message: errorMessage,
         user_agent: navigator.userAgent,
       });
-    } catch (error) {
+    } catch {
       // エラーは無視（監査ログの失敗でユーザー体験を損なわない）
     }
   },
@@ -53,7 +53,7 @@ export const authLogger = {
         action: 'LOGOUT',
         user_agent: navigator.userAgent,
       });
-    } catch (error) {
+    } catch {
       // エラーは無視（監査ログの失敗でユーザー体験を損なわない）
     }
   },
@@ -70,7 +70,7 @@ export const authLogger = {
         error_message: errorMessage,
         user_agent: navigator.userAgent,
       });
-    } catch (error) {
+    } catch {
       // エラーは無視（監査ログの失敗でユーザー体験を損なわない）
     }
   },

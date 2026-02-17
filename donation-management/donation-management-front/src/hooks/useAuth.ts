@@ -31,16 +31,18 @@ export function useAuth() {
               .eq('id', session.user.id)
               .single();
 
-            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+            const result = await Promise.race([fetchPromise, timeoutPromise]) as { data: { role?: 'user' | 'admin' | 'system' } | null; error: unknown };
 
             if (!mounted) return;
 
-            if (error) {
+            if (result.error) {
               setUserRole('user');
+            } else if (result.data?.role) {
+              setUserRole(result.data.role);
             } else {
-              setUserRole(data?.role || 'user');
+              setUserRole('user');
             }
-          } catch (error) {
+          } catch {
             if (mounted) {
               setUserRole('user');
             }
