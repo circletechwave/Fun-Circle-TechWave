@@ -13,7 +13,7 @@ export function useAuth() {
     let initialLoadComplete = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         if (!mounted) return;
 
         setSession(session);
