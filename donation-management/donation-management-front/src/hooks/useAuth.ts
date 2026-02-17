@@ -12,27 +12,15 @@ export function useAuth() {
     let mounted = true;
     let initialLoadComplete = false;
 
-    console.log('[useAuth] Initializing auth listener');
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('[useAuth] Auth state change event:', event, 'User:', session?.user?.email || 'No user');
-
-        if (!mounted) {
-          console.log('[useAuth] Component unmounted, ignoring auth state change');
-          return;
-        }
-
-        // ログ記録はAuth.tsxで明示的に行うため、ここでは行わない
-        // （既存セッション復元時もSIGNED_INが発火してしまうため）
+        if (!mounted) return;
 
         setSession(session);
 
         if (session?.user?.id) {
           try {
-            console.log('[useAuth] Fetching role for user on state change:', session.user.id);
-
-            // タイムアウト付きでロール取得
+            // タイムアウト付きでロール取得（5秒）
             const timeoutPromise = new Promise((_, reject) =>
               setTimeout(() => reject(new Error('Role fetch timeout')), 5000)
             );
@@ -45,33 +33,24 @@ export function useAuth() {
 
             const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
-            if (!mounted) {
-              console.log('[useAuth] Component unmounted during role fetch');
-              return;
-            }
+            if (!mounted) return;
 
             if (error) {
-              console.error('[useAuth] Failed to fetch user role on state change:', error);
               setUserRole('user');
             } else {
-              console.log('[useAuth] Role fetched on state change:', data?.role);
               setUserRole(data?.role || 'user');
             }
           } catch (error) {
-            console.error('[useAuth] Error fetching user role on state change:', error);
             if (mounted) {
-              console.warn('[useAuth] Setting default role to "user" due to error');
               setUserRole('user');
             }
           }
         } else {
-          console.log('[useAuth] No session on state change, clearing userRole');
           setUserRole(null);
         }
 
         // 初回ロード完了をマーク
         if (!initialLoadComplete) {
-          console.log('[useAuth] Initial load complete, setting loading to false');
           initialLoadComplete = true;
           setLoading(false);
         }

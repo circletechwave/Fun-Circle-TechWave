@@ -20,18 +20,14 @@ export default function AuthComponent() {
         if (error) throw error
         setMessage('確認メールを送信しました。メールを確認してください。')
       } else {
-        console.log('[Auth] Attempting signInWithPassword for:', email)
         const { error } = await supabase.auth.signInWithPassword({ email, password })
-        console.log('[Auth] signInWithPassword result - error:', error)
         if (error) {
-          console.log('[Auth] Login failed, logging failure...')
           await authLogger.logLoginFailure(email, error.message)
           throw error
         }
-        console.log('[Auth] Login succeeded, logging success...')
         // ログイン成功を記録（非同期、エラーは無視）
-        authLogger.logLoginSuccess(email).catch(err => {
-          console.error('[Auth] Failed to log login success:', err)
+        authLogger.logLoginSuccess(email).catch(() => {
+          // エラーは無視
         })
       }
     } catch (error) {
@@ -197,8 +193,8 @@ export default function AuthComponent() {
                 throw error;
               }
               // ログイン成功を記録（非同期、エラーは無視）
-              authLogger.logLoginSuccess(devEmail).catch(err => {
-                console.error('[Auth] Failed to log login success:', err);
+              authLogger.logLoginSuccess(devEmail).catch(() => {
+                // エラーは無視
               });
             } catch {
               // If sign in fails, try to sign up (for dev convenience)

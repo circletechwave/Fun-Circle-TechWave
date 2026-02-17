@@ -11,19 +11,15 @@ export const authLogger = {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { error } = await supabase.from('audit_logs').insert({
+      await supabase.from('audit_logs').insert({
         user_id: user?.id,
         user_email: email,
         action: 'LOGIN_SUCCESS',
-        ip_address: null, // フロントエンドからは取得不可
+        ip_address: null,
         user_agent: navigator.userAgent,
       });
-
-      if (error) {
-        console.error('Failed to log login success:', error);
-      }
     } catch (error) {
-      console.error('Failed to log login success:', error);
+      // エラーは無視（監査ログの失敗でユーザー体験を損なわない）
     }
   },
 
@@ -32,27 +28,15 @@ export const authLogger = {
    */
   async logLoginFailure(email: string, errorMessage: string) {
     try {
-      console.log('[authLogger] Attempting to log login failure for:', email);
-
-      // .select()を使わない（RLSポリシーでSELECTが拒否されるため）
-      const { error } = await supabase.from('audit_logs').insert({
+      await supabase.from('audit_logs').insert({
         user_id: null,
         user_email: email,
         action: 'LOGIN_FAILURE',
         error_message: errorMessage,
         user_agent: navigator.userAgent,
       });
-
-      if (error) {
-        console.error('[authLogger] Supabase error when logging login failure:', error);
-        console.error('[authLogger] Error code:', error.code);
-        console.error('[authLogger] Error message:', error.message);
-        throw error;
-      }
-
-      console.log('[authLogger] Successfully logged login failure');
     } catch (error) {
-      console.error('[authLogger] Failed to log login failure (caught):', error);
+      // エラーは無視（監査ログの失敗でユーザー体験を損なわない）
     }
   },
 
@@ -63,18 +47,14 @@ export const authLogger = {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { error } = await supabase.from('audit_logs').insert({
+      await supabase.from('audit_logs').insert({
         user_id: user?.id,
         user_email: email,
         action: 'LOGOUT',
         user_agent: navigator.userAgent,
       });
-
-      if (error) {
-        console.error('Failed to log logout:', error);
-      }
     } catch (error) {
-      console.error('Failed to log logout:', error);
+      // エラーは無視（監査ログの失敗でユーザー体験を損なわない）
     }
   },
 
@@ -83,20 +63,15 @@ export const authLogger = {
    */
   async logAuthError(email: string | null, errorMessage: string) {
     try {
-      // .select()を使わない（RLSポリシーでSELECTが拒否されるため）
-      const { error } = await supabase.from('audit_logs').insert({
+      await supabase.from('audit_logs').insert({
         user_id: null,
         user_email: email,
         action: 'AUTH_ERROR',
         error_message: errorMessage,
         user_agent: navigator.userAgent,
       });
-
-      if (error) {
-        console.error('Failed to log auth error:', error);
-      }
     } catch (error) {
-      console.error('Failed to log auth error:', error);
+      // エラーは無視（監査ログの失敗でユーザー体験を損なわない）
     }
   },
 };
