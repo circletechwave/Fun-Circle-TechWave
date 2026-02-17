@@ -18,4 +18,10 @@ if (!supabaseUrl || supabaseUrl === 'your_supabase_project_url') {
   console.warn('🔗 https://supabase.com でプロジェクトを作成できます。')
 }
 
-export const supabase = createClient(validUrl, validKey)
+export const supabase = createClient(validUrl, validKey, {
+  auth: {
+    autoRefreshToken: true,      // トークン自動更新を有効化
+    persistSession: true,         // セッションをローカルストレージに保存
+    detectSessionInUrl: true      // URLからセッション検出（OAuth用）
+  }
+})
