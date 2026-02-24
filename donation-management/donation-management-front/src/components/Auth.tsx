@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { authLogger } from '../services/authLogger'
 
 export default function AuthComponent() {
   const [loading, setLoading] = useState(false)
@@ -52,7 +53,14 @@ export default function AuthComponent() {
         setMessage('認証コードを送信しました。メールを確認してコードを入力してください。')
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
+        if (error) {
+          await authLogger.logLoginFailure(email, error.message)
+          throw error
+        }
+        // ログイン成功を記録（非同期、エラーは無視）
+        authLogger.logLoginSuccess(email).catch(() => {
+          // エラーは無視
+        })
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'エラーが発生しました'
@@ -73,10 +81,14 @@ export default function AuthComponent() {
         token: otp,
         type: 'signup',
       })
-      if (error) throw error
+      if (error) {
+        await authLogger.logAuthError(email, `OTP verification failed: ${error.message}`);
+        throw error;
+      }
       setMessage('認証が完了しました。ログインしました。')
       // 認証後は自動的にセッションが確立されるため、特別なリダイレクト処理等は
       // 親コンポーネントのセッション監視で処理されることを想定
+      authLogger.logLoginSuccess(email).catch(() => { });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '認証に失敗しました'
       setMessage(errorMessage)
@@ -281,6 +293,56 @@ export default function AuthComponent() {
           </button>
         </>
       )}
+
+      <div style={{ marginTop: '20px' }}>
+        <button
+          onClick={async () => {
+            setLoading(true);
+            const devEmail = 'admin@company.com';
+            try {
+              const { error } = await supabase.auth.signInWithPassword({
+                email: devEmail,
+                password: 'password',
+              });
+              if (error) {
+                await authLogger.logLoginFailure(devEmail, error.message);
+                throw error;
+              }
+              // ログイン成功を記録（非同期、エラーは無視）
+              authLogger.logLoginSuccess(devEmail).catch(() => {
+                // エラーは無視
+              });
+            } catch {
+              // If sign in fails, try to sign up (for dev convenience)
+              try {
+                const { error: signUpError } = await supabase.auth.signUp({
+                  email: devEmail,
+                  password: 'password',
+                });
+                if (signUpError) throw signUpError;
+                setMessage('開発用ユーザーを作成しました。もう一度クリックしてください。');
+              } catch (signUpError) {
+                const errorMessage = signUpError instanceof Error ? signUpError.message : 'エラーが発生しました';
+                setMessage(errorMessage);
+              }
+            } finally {
+              setLoading(false);
+            }
+          }}
+          style={{
+            width: '100%',
+            padding: '10px',
+            backgroundColor: '#666',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            marginTop: '10px'
+          }}
+        >
+          開発用ログイン (admin)
+        </button>
+      </div>
     </div>
   )
 }
