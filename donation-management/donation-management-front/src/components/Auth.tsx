@@ -25,6 +25,8 @@ export default function AuthComponent() {
         }
 
         // ドメイン制約の検証 (環境変数で制御)
+        console.log("【デバッグ確認用】ドメイン制約の設定値:", import.meta.env.VITE_REQUIRE_HAPINS_DOMAIN);
+
         if (import.meta.env.VITE_REQUIRE_HAPINS_DOMAIN === 'true') {
           if (!email.endsWith('@hapins.net')) {
             throw new Error('登録できるメールアドレスは @hapins.net ドメインのみです');
