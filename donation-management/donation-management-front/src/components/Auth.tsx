@@ -216,6 +216,11 @@ export default function AuthComponent() {
                   borderRadius: '8px'
                 }}
               />
+              {isSignUp && (
+                <p style={{ marginTop: '8px', fontSize: '0.9rem', color: '#666' }}>
+                  ※ 8文字以上（大文字・小文字・数字を含む）で入力してください
+                </p>
+              )}
             </div>
 
             {message && (
