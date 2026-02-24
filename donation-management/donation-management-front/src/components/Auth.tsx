@@ -294,55 +294,7 @@ export default function AuthComponent() {
         </>
       )}
 
-      <div style={{ marginTop: '20px' }}>
-        <button
-          onClick={async () => {
-            setLoading(true);
-            const devEmail = 'admin@company.com';
-            try {
-              const { error } = await supabase.auth.signInWithPassword({
-                email: devEmail,
-                password: 'password',
-              });
-              if (error) {
-                await authLogger.logLoginFailure(devEmail, error.message);
-                throw error;
-              }
-              // ログイン成功を記録（非同期、エラーは無視）
-              authLogger.logLoginSuccess(devEmail).catch(() => {
-                // エラーは無視
-              });
-            } catch {
-              // If sign in fails, try to sign up (for dev convenience)
-              try {
-                const { error: signUpError } = await supabase.auth.signUp({
-                  email: devEmail,
-                  password: 'password',
-                });
-                if (signUpError) throw signUpError;
-                setMessage('開発用ユーザーを作成しました。もう一度クリックしてください。');
-              } catch (signUpError) {
-                const errorMessage = signUpError instanceof Error ? signUpError.message : 'エラーが発生しました';
-                setMessage(errorMessage);
-              }
-            } finally {
-              setLoading(false);
-            }
-          }}
-          style={{
-            width: '100%',
-            padding: '10px',
-            backgroundColor: '#666',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            marginTop: '10px'
-          }}
-        >
-          開発用ログイン (admin)
-        </button>
-      </div>
+
     </div>
   )
 }
