@@ -18,13 +18,26 @@ export default function AuthComponent() {
 
     try {
       if (isSignUp) {
+        // パスワードのバリデーション検証（英数字と大文字1文字以上、8文字以上）
+        const passwordRegex = /^(?=.*[A-Z])[a-zA-Z0-9]{8,}$/;
+        if (!passwordRegex.test(password)) {
+          throw new Error('パスワードは8文字以上で、英数字と大文字を少なくとも1つ含める必要があります');
+        }
+
+        // ドメイン制約の検証 (環境変数で制御)
+        if (import.meta.env.VITE_REQUIRE_HAPINS_DOMAIN === 'true') {
+          if (!email.endsWith('@hapins.net')) {
+            throw new Error('登録できるメールアドレスは @hapins.net ドメインのみです');
+          }
+        }
+
         // メタデータとして名前を保存
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              name: name,
+              name,
             },
           },
         })
