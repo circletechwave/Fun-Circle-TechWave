@@ -31,8 +31,8 @@ export default function AuthComponent() {
           }
         }
 
-        // メタデータとして名前を保存
-        const { error } = await supabase.auth.signUp({
+        // メタデータとして名前を保存しつつサインアップ
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -42,6 +42,12 @@ export default function AuthComponent() {
           },
         })
         if (error) throw error
+
+        // Supabase の仕様上、登録済みメールアドレスでもエラーにならず data が返る。
+        // identities の配列が空の場合は「既に登録済みのユーザー」と判定できる。
+        if (data?.user && data.user.identities && data.user.identities.length === 0) {
+          throw new Error('このメールアドレスは既に登録されています。ログイン画面からログインしてください。');
+        }
         setIsVerifying(true)
         setMessage('認証コードを送信しました。メールを確認してコードを入力してください。')
       } else {
