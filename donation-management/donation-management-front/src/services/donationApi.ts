@@ -174,7 +174,13 @@ export const donationApi = {
       const insertData: Record<string, unknown> = {};
       donationColumns.forEach(key => {
         if (donation[key as keyof Partial<Donation>] !== undefined) {
-          insertData[key] = donation[key as keyof Partial<Donation>];
+          const value = donation[key as keyof Partial<Donation>];
+          // Convert empty strings to null for optional foreign key fields
+          if ((key === 'sub_category_id') && value === '') {
+            insertData[key] = null;
+          } else {
+            insertData[key] = value;
+          }
         }
       });
       // eslint-disable-next-line no-console
@@ -253,6 +259,11 @@ export const donationApi = {
         deleted_at,
         ...updateData
       } = donationWithMeta;
+
+      // Convert empty strings to null for optional foreign key fields
+      if (updateData.sub_category_id === '') {
+        (updateData as { sub_category_id?: string | null }).sub_category_id = null;
+      }
 
       // eslint-disable-next-line no-console
       console.debug('Updating donation with filtered data:', updateData);
