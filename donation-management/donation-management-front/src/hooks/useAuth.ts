@@ -6,6 +6,7 @@ import { authLogger } from '../services/authLogger';
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<'user' | 'admin' | 'system' | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,28 +28,33 @@ export function useAuth() {
 
             const fetchPromise = supabase
               .from('users')
-              .select('role')
+              .select('role, name')
               .eq('id', session.user.id)
               .single();
 
-            const result = await Promise.race([fetchPromise, timeoutPromise]) as { data: { role?: 'user' | 'admin' | 'system' } | null; error: unknown };
+            const result = await Promise.race([fetchPromise, timeoutPromise]) as { data: { role?: 'user' | 'admin' | 'system', name?: string } | null; error: unknown };
 
             if (!mounted) return;
 
             if (result.error) {
               setUserRole('user');
-            } else if (result.data?.role) {
-              setUserRole(result.data.role);
+              setUserName(null);
+            } else if (result.data) {
+              setUserRole(result.data.role || 'user');
+              setUserName(result.data.name || null);
             } else {
               setUserRole('user');
+              setUserName(null);
             }
           } catch {
             if (mounted) {
               setUserRole('user');
+              setUserName(null);
             }
           }
         } else {
           setUserRole(null);
+          setUserName(null);
         }
 
         // 初回ロード完了をマーク
@@ -75,7 +81,8 @@ export function useAuth() {
     await supabase.auth.signOut();
     setSession(null);
     setUserRole(null);
+    setUserName(null);
   };
 
-  return { session, userRole, isAdmin, loading, signOut };
+  return { session, userRole, userName, isAdmin, loading, signOut };
 }

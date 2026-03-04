@@ -11,6 +11,7 @@ export default function AuthComponent() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
   const [message, setMessage] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,7 +77,7 @@ export default function AuthComponent() {
     setMessage('')
 
     try {
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         email,
         token: otp,
         type: 'signup',
@@ -85,6 +86,21 @@ export default function AuthComponent() {
         await authLogger.logAuthError(email, `OTP verification failed: ${error.message}`);
         throw error;
       }
+
+      // OTP認証成功後、ユーザーの氏名情報を public.users に反映する
+      if (data?.session?.user) {
+        const userName = data.session.user.user_metadata?.name || name;
+        if (userName) {
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ name: userName })
+            .eq('id', data.session.user.id);
+          if (updateError) {
+            console.error('Failed to update user name:', updateError);
+          }
+        }
+      }
+
       setMessage('認証が完了しました。ログインしました。')
       // 認証後は自動的にセッションが確立されるため、特別なリダイレクト処理等は
       // 親コンポーネントのセッション監視で処理されることを想定
@@ -220,22 +236,47 @@ export default function AuthComponent() {
               <label htmlFor="password" style={{ display: 'block', marginBottom: '8px', fontSize: '1.2rem', fontWeight: 'bold' }}>
                 パスワード
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  fontSize: '1.2rem',
-                  border: '1px solid #ccc',
-                  borderRadius: '8px'
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    paddingRight: '50px',
+                    fontSize: '1.2rem',
+                    border: '1px solid #ccc',
+                    borderRadius: '8px'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: '#666',
+                    padding: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  aria-label={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
               {isSignUp && (
-                <p style={{ marginTop: '8px', fontSize: '0.9rem', color: '#666' }}>
+                <p style={{ marginTop: '8px', fontSize: '0.9rem', color: 'white' }}>
                   ※ 8文字以上（大文字・小文字・数字を含む）で入力してください
                 </p>
               )}
@@ -281,9 +322,9 @@ export default function AuthComponent() {
               width: '100%',
               padding: '16px',
               fontSize: '1.1rem',
-              backgroundColor: 'transparent',
-              color: '#4CAF50',
-              border: '2px solid #4CAF50',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
               marginBottom: '20px'
