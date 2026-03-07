@@ -20,10 +20,10 @@ export default function AuthComponent() {
 
     try {
       if (isSignUp) {
-        // パスワードのバリデーション検証（英数字と大文字1文字以上、8文字以上）
-        const passwordRegex = /^(?=.*[A-Z])[a-zA-Z0-9]{8,}$/;
+        // パスワードのバリデーション検証（英数字と大文字1文字以上、8文字以上。記号も許可）
+        const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[a-zA-Z\d\W_]{8,}$/;
         if (!passwordRegex.test(password)) {
-          throw new Error('パスワードは8文字以上で、英数字と大文字を少なくとも1つ含める必要があります');
+          throw new Error('パスワードは8文字以上で、数字と大文字を少なくとも1つ含める必要があります');
         }
 
         // ドメイン制約の検証 (環境変数で制御)
@@ -277,7 +277,7 @@ export default function AuthComponent() {
               </div>
               {isSignUp && (
                 <p style={{ marginTop: '8px', fontSize: '0.9rem', color: 'white' }}>
-                  ※ 8文字以上（大文字・小文字・数字を含む）で入力してください
+                  ※ 8文字以上（大文字・小文字・数字を含む）で入力してください。記号も使用可能です。
                 </p>
               )}
             </div>
