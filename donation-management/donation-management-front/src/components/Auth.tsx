@@ -23,7 +23,7 @@ export default function AuthComponent() {
         // パスワードのバリデーション検証（英数字と大文字1文字以上、8文字以上。記号も許可）
         const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[a-zA-Z\d\W_]{8,}$/;
         if (!passwordRegex.test(password)) {
-          throw new Error('パスワードは8文字以上で、数字と大文字を少なくとも1つ含める必要があります');
+          throw new Error('パスワードは8文字以上で、英数字と大文字を少なくとも1つ含める必要があります');
         }
 
         // ドメイン制約の検証 (環境変数で制御)
