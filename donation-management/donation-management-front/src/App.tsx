@@ -16,6 +16,22 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>('list')
   const [selectedDonation, setSelectedDonation] = useState<Donation | undefined>(undefined)
   const [selectedDonationId, setSelectedDonationId] = useState<string | undefined>(undefined)
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (session) {
+      supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+        .then(({ data }) => {
+          setUserRole(data?.role || 'user')
+        })
+    } else {
+      setUserRole(null)
+    }
+  }, [session])
 
   const handleAdminClick = () => {
     setCurrentView('admin')
@@ -140,6 +156,8 @@ function App() {
                 donationId={selectedDonationId}
                 onBack={handleCancel}
                 onEdit={(donation) => handleEdit(donation)}
+                currentUserId={session?.user?.id}
+                isAdmin={userRole === 'admin' || userRole === 'system'}
               />
             ) : (
               <DonationForm

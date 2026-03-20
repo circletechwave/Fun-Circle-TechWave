@@ -35,6 +35,7 @@ export interface Donation {
   review_count?: number;
   image_urls?: string[];
   tags?: Tag[];
+  created_by?: string;
   created_at?: string;
   updated_at?: string;
 }
