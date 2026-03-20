@@ -25,7 +25,7 @@ function App() {
         .select('role')
         .eq('id', session.user.id)
         .single()
-        .then(({ data }) => {
+        .then(({ data }: { data: { role: string } | null }) => {
           setUserRole(data?.role || 'user')
         })
     } else {
