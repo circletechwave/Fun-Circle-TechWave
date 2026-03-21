@@ -186,10 +186,13 @@ export const donationApi = {
       // eslint-disable-next-line no-console
       console.debug('Inserting donation with whitelisted data:', insertData);
 
-      // Add created_by if missing (simple assignment as before)
+      // Add created_by if missing — use getSession() (cached, no network) for reliability
       if (!insertData.created_by) {
-        const { data: { user: vUser } } = await supabase.auth.getUser();
-        insertData.created_by = vUser?.id || '00000000-0000-4000-8000-000000000001';
+        const { data: { session } } = await supabase.auth.getSession();
+        insertData.created_by = session?.user?.id;
+        if (!insertData.created_by) {
+          throw new Error('ログインユーザーが取得できませんでした。再ログインしてください。');
+        }
       }
 
       const { data, error } = await supabase
