@@ -12,7 +12,7 @@ import './App.css'
 type ViewType = 'list' | 'create' | 'edit' | 'detail' | 'admin'
 
 function App() {
-  const { session, isAdmin, loading, signOut } = useAuth()
+  const { session, userName, isAdmin, loading, signOut } = useAuth()
   const [currentView, setCurrentView] = useState<ViewType>('list')
   const [selectedDonation, setSelectedDonation] = useState<Donation | undefined>(undefined)
   const [selectedDonationId, setSelectedDonationId] = useState<string | undefined>(undefined)
@@ -94,16 +94,16 @@ function App() {
     <div className="App">
       {!session ? (
         <div className="auth-container">
-          <h1>Donation Management System</h1>
+          <h1>HapInS Library</h1>
           <AuthComponent />
         </div>
       ) : (
         <div className="dashboard">
           <header className="app-header">
             <div className="header-content">
-              <h1>社内寄贈物管理システム</h1>
+              <h1>HapInS Library</h1>
               <div className="user-info">
-                <span>ログイン中: {session.user.email}</span>
+                <span>ログイン中: {userName || session.user.email}</span>
                 {isAdmin && (
                   <button
                     onClick={handleAdminClick}
