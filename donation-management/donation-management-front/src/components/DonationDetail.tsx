@@ -6,6 +6,8 @@ interface DonationDetailProps {
     donationId: string;
     onBack: () => void;
     onEdit: (donation: Donation) => void;
+    currentUserId?: string;
+    isAdmin?: boolean;
 }
 
 const SafeImage = ({ src, alt, style }: { src: string; alt: string; style: React.CSSProperties }) => {
@@ -31,7 +33,7 @@ const SafeImage = ({ src, alt, style }: { src: string; alt: string; style: React
     return <img src={src} alt={alt} style={style} onError={() => setImgError(true)} />;
 };
 
-export default function DonationDetail({ donationId, onBack, onEdit }: DonationDetailProps) {
+export default function DonationDetail({ donationId, onBack, onEdit, currentUserId, isAdmin }: DonationDetailProps) {
     const [donation, setDonation] = useState<Donation | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | undefined>();
@@ -70,12 +72,14 @@ export default function DonationDetail({ donationId, onBack, onEdit }: DonationD
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                     <h1 style={{ margin: 0, fontSize: '24px' }}>{donation.title}</h1>
-                    <button
-                        onClick={() => onEdit(donation)}
-                        style={{ padding: '8px 16px', backgroundColor: '#0d6efd', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                        編集
-                    </button>
+                    {(isAdmin || donation.created_by === currentUserId) && (
+                        <button
+                            onClick={() => onEdit(donation)}
+                            style={{ padding: '8px 16px', backgroundColor: '#0d6efd', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                        >
+                            編集
+                        </button>
+                    )}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>

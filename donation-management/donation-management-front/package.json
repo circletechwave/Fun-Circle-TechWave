@@ -5,11 +5,11 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "tsc -b && vite build",
+		"build": "tsc -p tsconfig.app.json && vite build",
 		"lint": "eslint .",
 		"format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
 		"format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc -p tsconfig.app.json --noEmit",
 		"preview": "pnpm run build && wrangler pages dev",
 		"deploy": "pnpm run build && wrangler pages deploy",
 		"cf-typegen": "wrangler types"

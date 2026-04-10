@@ -56,10 +56,15 @@ function App() {
 
   const handleSubmit = async (data: Partial<Donation>) => {
     try {
+      let result: { success: boolean; error?: string } | undefined
       if (currentView === 'create') {
-        await donationApi.createDonation(data)
+        result = await donationApi.createDonation(data)
       } else if (currentView === 'edit' && selectedDonation) {
-        await donationApi.updateDonation(selectedDonation.id, data)
+        result = await donationApi.updateDonation(selectedDonation.id, data)
+      }
+      if (result && !result.success) {
+        alert(result.error || '保存に失敗しました')
+        return
       }
       setCurrentView('list')
     } catch (error) {
@@ -140,6 +145,8 @@ function App() {
                 donationId={selectedDonationId}
                 onBack={handleCancel}
                 onEdit={(donation) => handleEdit(donation)}
+                currentUserId={session?.user?.id}
+                isAdmin={isAdmin}
               />
             ) : (
               <DonationForm
