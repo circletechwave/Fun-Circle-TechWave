@@ -455,7 +455,8 @@ export const donationApi = {
 
   async returnDonation(lendingId: string, donationId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
+      // 貸出レコードのステータスを返却済みに更新
+      const { error: lendingError } = await supabase
         .from('lendings')
         .update({
           status: 'returned',
@@ -463,7 +464,16 @@ export const donationApi = {
         })
         .eq('id', lendingId);
 
-      if (error) throw error;
+      if (lendingError) throw lendingError;
+
+      // 寄贈物のステータスを利用可能に戻す
+      const { error: donationError } = await supabase
+        .from('donations')
+        .update({ status: 'available' })
+        .eq('id', donationId);
+
+      if (donationError) throw donationError;
+
       return { success: true };
     } catch (error) {
       return {
