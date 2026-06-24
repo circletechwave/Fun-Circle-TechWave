@@ -441,6 +441,7 @@ export const donationApi = {
       }
 
       // 貸出レコードを作成
+      // トリガー update_donation_status_on_lending が自動的に donations.status を 'lending' に更新する
       const { data, error } = await supabase
         .from('lendings')
         .insert({
@@ -455,14 +456,6 @@ export const donationApi = {
 
       if (error) throw error;
 
-      // 寄贈物のステータスを貸出中に更新
-      const { error: donationError } = await supabase
-        .from('donations')
-        .update({ status: 'lending' })
-        .eq('id', donationId);
-
-      if (donationError) throw donationError;
-
       return { success: true, data: data as Lending };
     } catch (error) {
       return {
@@ -473,9 +466,10 @@ export const donationApi = {
     }
   },
 
-  async returnDonation(lendingId: string, donationId: string): Promise<{ success: boolean; error?: string }> {
+  async returnDonation(lendingId: string): Promise<{ success: boolean; error?: string }> {
     try {
       // 貸出レコードのステータスを返却済みに更新
+      // トリガー update_donation_status_on_lending が自動的に donations.status を 'available' に更新する
       const { error: lendingError } = await supabase
         .from('lendings')
         .update({
@@ -485,14 +479,6 @@ export const donationApi = {
         .eq('id', lendingId);
 
       if (lendingError) throw lendingError;
-
-      // 寄贈物のステータスを利用可能に戻す
-      const { error: donationError } = await supabase
-        .from('donations')
-        .update({ status: 'available' })
-        .eq('id', donationId);
-
-      if (donationError) throw donationError;
 
       return { success: true };
     } catch (error) {

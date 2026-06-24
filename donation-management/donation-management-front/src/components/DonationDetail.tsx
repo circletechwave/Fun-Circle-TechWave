@@ -120,7 +120,7 @@ export default function DonationDetail({ donationId, onBack, onEdit, currentUser
 
         try {
             setActionLoading(true);
-            const result = await donationApi.returnDonation(activeLending.id, donationId);
+            const result = await donationApi.returnDonation(activeLending.id);
             if (result.success) {
                 alert('返却処理が完了しました');
                 await fetchDonationDetails();
