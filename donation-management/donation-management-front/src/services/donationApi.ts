@@ -398,13 +398,14 @@ export const donationApi = {
         .from('lendings')
         .select(`
           *,
-          users (id, name, email)
+          users!left (id, name, email)
         `)
         .eq('donation_id', donationId)
         .eq('status', 'active')
         .maybeSingle();
 
       if (error) throw error;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const item: any = data;
       const lending: Lending | null = item ? {
@@ -421,6 +422,7 @@ export const donationApi = {
       };
     }
   },
+
 
   async borrowDonation(donationId: string, dueDate: string, purpose?: string): Promise<{ success: boolean; data: Lending | null; error?: string }> {
     try {

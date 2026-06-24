@@ -225,7 +225,7 @@ export default function DonationDetail({ donationId, onBack, onEdit, currentUser
                                             boxShadow: '0 2px 4px rgba(40,167,69,0.2)',
                                         }}
                                     >
-                                        この本を借りる
+                                        この品を借りる
                                     </button>
                                 )}
 
@@ -384,7 +384,7 @@ export default function DonationDetail({ donationId, onBack, onEdit, currentUser
                         width: '400px',
                         boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
                     }}>
-                        <h2 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>この本を借りる</h2>
+                        <h2 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>この品を借りる</h2>
                         <div style={{ marginBottom: '16px' }}>
                             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#666' }}>返却予定日 *</label>
                             <input
