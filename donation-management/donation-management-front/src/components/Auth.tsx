@@ -53,6 +53,13 @@ export default function AuthComponent() {
         setIsVerifying(true)
         setMessage('認証コードを送信しました。メールを確認してコードを入力してください。')
       } else {
+        // ドメイン制約の検証 (環境変数で制御)
+        if (import.meta.env.VITE_REQUIRE_HAPINS_DOMAIN === 'true') {
+          if (!email.endsWith('@hapins.net')) {
+            throw new Error('ログインできるメールアドレスは @hapins.net ドメインのみです');
+          }
+        }
+
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) {
           await authLogger.logLoginFailure(email, error.message)
