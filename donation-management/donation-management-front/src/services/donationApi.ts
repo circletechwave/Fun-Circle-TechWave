@@ -398,7 +398,7 @@ export const donationApi = {
         .from('lendings')
         .select(`
           *,
-          users!user_id (id, name, email)
+          users!fk_lendings_user (id, name, email)
         `)
         .eq('donation_id', donationId)
         .eq('status', 'active')
