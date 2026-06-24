@@ -1,0 +1,53 @@
+name: Supabase Database Backup
+
+on:
+  push:
+    branches:
+      - feature/supabase-backup
+  schedule:
+    # 毎週日曜日 00:00 UTC (日本時間 09:00) に定期実行
+    - cron: '0 0 * * 0'
+  workflow_dispatch: # GitHubのUIから手動でバックアップを実行可能にする
+
+jobs:
+  backup:
+    name: Database Backup
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Run pg_dump
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Error: SUPABASE_DB_URL is not set."
+            exit 1
+          fi
+          
+          # バックアップファイル名に実行時の日付を付与 (例: supabase_backup_2026-06-24.sql)
+          BACKUP_DATE=$(date +'%Y-%m-%d')
+          FILENAME="supabase_backup_${BACKUP_DATE}.sql"
+          
+          echo "Starting pg_dump..."
+          # スキーマとデータの両方をダンプ（ロール、所有者、権限情報は除外して汎用性を高める）
+          pg_dump "$SUPABASE_DB_URL" --clean --if-exists --no-owner --no-privileges > "$FILENAME"
+          
+          echo "Database dump created: $FILENAME"
+          # ファイル名を環境変数経由で次のステップに渡す
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+
+      - name: Upload Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME }}
+          path: ${{ env.FILENAME }}
+          # 30日間（約1ヶ月）保存し、期限が切れたら自動削除する
+          retention-days: 30
