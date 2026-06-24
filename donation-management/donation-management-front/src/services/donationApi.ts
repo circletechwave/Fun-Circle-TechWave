@@ -1,4 +1,4 @@
-import type { Donation, Category, Location, SearchFilters, PaginationInfo, Tag } from '../types/donation';
+import type { Donation, Category, Location, SearchFilters, PaginationInfo, Tag, Lending } from '../types/donation';
 
 import { supabase } from '../lib/supabase';
 
@@ -389,6 +389,87 @@ export const donationApi = {
       return { success: true, data: data as Tag[] };
     } catch (error) {
       return { success: false, data: [], error: error instanceof Error ? error.message : 'タグの取得に失敗しました' };
+    }
+  },
+
+  async getActiveLending(donationId: string): Promise<{ success: boolean; data: Lending | null; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('lendings')
+        .select(`
+          *,
+          users (id, name, email)
+        `)
+        .eq('donation_id', donationId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const item: any = data;
+      const lending: Lending | null = item ? {
+        ...item,
+        users: item.users
+      } : null;
+
+      return { success: true, data: lending };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : '貸出情報の取得に失敗しました'
+      };
+    }
+  },
+
+  async borrowDonation(donationId: string, dueDate: string, purpose?: string): Promise<{ success: boolean; data: Lending | null; error?: string }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        throw new Error('ログインユーザーの取得に失敗しました。再ログインしてください。');
+      }
+
+      const { data, error } = await supabase
+        .from('lendings')
+        .insert({
+          donation_id: donationId,
+          user_id: userId,
+          due_date: dueDate,
+          purpose: purpose || null,
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data: data as Lending };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : '貸出処理に失敗しました'
+      };
+    }
+  },
+
+  async returnDonation(lendingId: string, donationId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('lendings')
+        .update({
+          status: 'returned',
+          returned_at: new Date().toISOString()
+        })
+        .eq('id', lendingId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '返却処理に失敗しました'
+      };
     }
   },
 };
