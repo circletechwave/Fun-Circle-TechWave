@@ -398,13 +398,18 @@ export const donationApi = {
         .from('lendings')
         .select(`
           *,
-          users!left (id, name, email)
+          users!user_id (id, name, email)
         `)
         .eq('donation_id', donationId)
         .eq('status', 'active')
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('getActiveLending error:', error);
+        throw error;
+      }
+
+      console.log('getActiveLending data:', data);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const item: any = data;
@@ -413,8 +418,11 @@ export const donationApi = {
         users: item.users
       } : null;
 
+      console.log('Processed lending:', lending);
+
       return { success: true, data: lending };
     } catch (error) {
+      console.error('getActiveLending exception:', error);
       return {
         success: false,
         data: null,
