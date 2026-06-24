@@ -430,6 +430,7 @@ export const donationApi = {
         throw new Error('ログインユーザーの取得に失敗しました。再ログインしてください。');
       }
 
+      // 貸出レコードを作成
       const { data, error } = await supabase
         .from('lendings')
         .insert({
@@ -443,6 +444,15 @@ export const donationApi = {
         .single();
 
       if (error) throw error;
+
+      // 寄贈物のステータスを貸出中に更新
+      const { error: donationError } = await supabase
+        .from('donations')
+        .update({ status: 'lending' })
+        .eq('id', donationId);
+
+      if (donationError) throw donationError;
+
       return { success: true, data: data as Lending };
     } catch (error) {
       return {

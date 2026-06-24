@@ -40,6 +40,7 @@ export default function DonationDetail({ donationId, onBack, onEdit, currentUser
     
     // 貸出機能に関する状態
     const [activeLending, setActiveLending] = useState<Lending | null>(null);
+    const [lendingLoading, setLendingLoading] = useState(false);
     const [showBorrowModal, setShowBorrowModal] = useState(false);
     const [dueDate, setDueDate] = useState('');
     const [purpose, setPurpose] = useState('');
@@ -52,12 +53,21 @@ export default function DonationDetail({ donationId, onBack, onEdit, currentUser
                 setDonation(result.data);
                 // ステータスが貸出中の場合、現在のアクティブな貸出レコードを取得
                 if (result.data.status === 'lending') {
-                    const lendingResult = await donationApi.getActiveLending(donationId);
-                    if (lendingResult.success) {
-                        setActiveLending(lendingResult.data);
+                    setLendingLoading(true);
+                    try {
+                        const lendingResult = await donationApi.getActiveLending(donationId);
+                        if (lendingResult.success) {
+                            setActiveLending(lendingResult.data);
+                        } else {
+                            setActiveLending(null);
+                            console.error('貸出情報の取得に失敗しました:', lendingResult.error);
+                        }
+                    } finally {
+                        setLendingLoading(false);
                     }
                 } else {
                     setActiveLending(null);
+                    setLendingLoading(false);
                 }
             } else {
                 setError(result.error || '詳細の取得に失敗しました');
@@ -263,8 +273,10 @@ export default function DonationDetail({ donationId, onBack, onEdit, currentUser
                                                     </button>
                                                 )}
                                             </>
-                                        ) : (
+                                        ) : lendingLoading ? (
                                             <div style={{ color: '#856404', textAlign: 'center' }}>貸出情報を取得中...</div>
+                                        ) : (
+                                            <div style={{ color: '#856404', textAlign: 'center' }}>貸出情報が見つかりません</div>
                                         )}
                                     </div>
                                 )}
