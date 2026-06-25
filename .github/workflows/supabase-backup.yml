@@ -18,10 +18,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL client
+      - name: Install PostgreSQL 17 client
         run: |
+          # PostgreSQL公式のAPTリポジトリを追加
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          # PostgreSQL 17クライアントをインストール（Supabaseのサーバーバージョンに合わせる）
+          sudo apt-get install -y postgresql-client-17
 
       - name: Run pg_dump
         env:
