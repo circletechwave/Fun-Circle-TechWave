@@ -20,12 +20,17 @@ jobs:
 
       - name: Install PostgreSQL 17 client
         run: |
-          # PostgreSQL公式のAPTリポジトリを追加
-          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          # PostgreSQL公式のAPTリポジトリを追加（apt-key非推奨対応）
+          sudo mkdir -p /etc/apt/keyrings
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+
+          # パッケージリストを更新してPostgreSQL 17クライアントをインストール
           sudo apt-get update
-          # PostgreSQL 17クライアントをインストール（Supabaseのサーバーバージョンに合わせる）
           sudo apt-get install -y postgresql-client-17
+
+          # インストール確認とバージョン表示
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: Run pg_dump
         env:
@@ -35,14 +40,14 @@ jobs:
             echo "Error: SUPABASE_DB_URL is not set."
             exit 1
           fi
-          
+
           # バックアップファイル名に実行時の日付を付与 (例: supabase_backup_2026-06-24.sql)
           BACKUP_DATE=$(date +'%Y-%m-%d')
           FILENAME="supabase_backup_${BACKUP_DATE}.sql"
-          
+
           echo "Starting pg_dump..."
-          # スキーマとデータの両方をダンプ（ロール、所有者、権限情報は除外して汎用性を高める）
-          pg_dump "$SUPABASE_DB_URL" --clean --if-exists --no-owner --no-privileges > "$FILENAME"
+          # PostgreSQL 17のpg_dumpを明示的に使用してバージョンミスマッチを防ぐ
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --clean --if-exists --no-owner --no-privileges > "$FILENAME"
           
           echo "Database dump created: $FILENAME"
           # ファイル名を環境変数経由で次のステップに渡す
