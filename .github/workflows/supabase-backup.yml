@@ -32,7 +32,7 @@ jobs:
           # インストール確認とバージョン表示
           /usr/lib/postgresql/17/bin/pg_dump --version
 
-      - name: Run pg_dump
+      - name: Run pg_dump (Full Backup)
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
@@ -41,15 +41,34 @@ jobs:
             exit 1
           fi
 
-          # バックアップファイル名に実行時の日付を付与 (例: supabase_backup_2026-06-24.sql)
-          BACKUP_DATE=$(date +'%Y-%m-%d')
-          FILENAME="supabase_backup_${BACKUP_DATE}.sql"
+          # バックアップファイル名に実行時の日付を付与
+          BACKUP_DATE=$(date +'%Y-%m-%d_%H-%M-%S')
+          FILENAME="supabase_full_backup_${BACKUP_DATE}.sql"
 
-          echo "Starting pg_dump..."
-          # PostgreSQL 17のpg_dumpを明示的に使用してバージョンミスマッチを防ぐ
-          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --clean --if-exists --no-owner --no-privileges > "$FILENAME"
-          
-          echo "Database dump created: $FILENAME"
+          echo "Starting full database backup..."
+          echo "Backup includes: schemas (public, auth, storage), roles, and privileges"
+
+          # 完全バックアップ: すべてのスキーマ、ロール、権限を含む
+          # --clean: 復元時に既存オブジェクトを削除
+          # --if-exists: DROP文にIF EXISTSを追加
+          # --create: データベース作成文を含める
+          # すべてのスキーマを明示的に指定（public, auth, storage, extensions等）
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" \
+            --clean \
+            --if-exists \
+            --create \
+            --format=plain \
+            --encoding=UTF8 \
+            --schema=public \
+            --schema=auth \
+            --schema=storage \
+            --schema=extensions \
+            --schema=graphql_public \
+            > "$FILENAME"
+
+          echo "✅ Full database backup created: $FILENAME"
+          ls -lh "$FILENAME"
+
           # ファイル名を環境変数経由で次のステップに渡す
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV
 
