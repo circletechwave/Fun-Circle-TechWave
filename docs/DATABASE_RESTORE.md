@@ -1,8 +1,12 @@
-# データベース復元手順書
+# データベース・Storage復元手順書
 
 ## 📋 概要
 
-GitHub Actionsで作成されたSupabaseデータベースのバックアップファイルから、データベースを復元する手順を説明します。
+GitHub Actionsで作成されたSupabaseのバックアップファイルから、データベースとStorageファイル（画像等）を復元する手順を説明します。
+
+**バックアップの内容:**
+- ✅ データベース（全スキーマ: public, auth, storage, extensions等）
+- ✅ Storageファイル（画像、ドキュメント等の実ファイル）
 
 ## ⚠️ 重要な注意事項
 
@@ -25,15 +29,20 @@ https://github.com/circletechwave/Fun-Circle-TechWave/actions
 
 # 3. 復元したい日付の実行を選択
 
-# 4. ページ下部の "Artifacts" セクションから以下をダウンロード
-# - supabase_full_backup_YYYY-MM-DD_HH-MM-SS.sql
+# 4. ページ下部の "Artifacts" セクションから以下の2つをダウンロード
+# - database-backup-supabase_full_backup_YYYY-MM-DD_HH-MM-SS.sql (データベース)
+# - storage-backup-supabase_storage_backup_YYYY-MM-DD_HH-MM-SS.tar.gz (画像等)
 ```
 
 ### 2. ファイルを解凍
 
 ```bash
-# ダウンロードしたZIPファイルを解凍
-unzip supabase_full_backup_2026-06-25_09-00-00.zip
+# データベースバックアップを解凍
+unzip database-backup-supabase_full_backup_2026-06-25_09-00-00.sql.zip
+
+# Storageバックアップを解凍
+unzip storage-backup-supabase_storage_backup_2026-06-25_09-00-00.tar.gz.zip
+tar -xzf supabase_storage_backup_2026-06-25_09-00-00.tar.gz
 ```
 
 ---
@@ -66,12 +75,100 @@ pg_dump "$SUPABASE_DB_URL" > current_backup_$(date +%Y%m%d_%H%M%S).sql
 ls -lh current_backup_*.sql
 ```
 
-**復元実行:**
+**データベース復元:**
 
 ```bash
 # Supabase本番環境に復元
 # 注意: --cleanオプションにより既存データが削除されます
 psql "$SUPABASE_DB_URL" -f supabase_full_backup_2026-06-25_09-00-00.sql
+```
+
+**Storageファイル復元:**
+
+```bash
+# Supabase Storage APIを使用してファイルをアップロード
+# Node.jsスクリプトを作成
+cat > restore_storage.js << 'SCRIPT'
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const STORAGE_DIR = process.argv[2];
+
+// ファイルをアップロード
+async function uploadFile(bucketName, filePath, fileBuffer) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${SUPABASE_URL}/storage/v1/object/${bucketName}/${filePath}`);
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SERVICE_KEY}`,
+        'apikey': SERVICE_KEY,
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': fileBuffer.length
+      }
+    };
+
+    const req = https.request(url, options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(data);
+        } else {
+          reject(new Error(`Upload failed: ${res.statusCode} ${data}`));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(fileBuffer);
+    req.end();
+  });
+}
+
+// ディレクトリを再帰的に処理
+async function uploadDirectory(dir, bucketName = '') {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      // 最初のディレクトリ名がバケット名
+      const newBucket = bucketName || entry.name;
+      await uploadDirectory(fullPath, newBucket);
+    } else {
+      // ファイルをアップロード
+      const fileBuffer = fs.readFileSync(fullPath);
+      const relativePath = path.relative(path.join(STORAGE_DIR, bucketName), fullPath);
+
+      console.log(`Uploading: ${bucketName}/${relativePath}`);
+      await uploadFile(bucketName, relativePath, fileBuffer);
+    }
+  }
+}
+
+// メイン処理
+(async () => {
+  try {
+    console.log('Starting Storage restore...');
+    await uploadDirectory(STORAGE_DIR);
+    console.log('✅ Storage restore completed!');
+  } catch (error) {
+    console.error('❌ Storage restore failed:', error);
+    process.exit(1);
+  }
+})();
+SCRIPT
+
+# 環境変数を設定してスクリプトを実行
+export SUPABASE_URL="your-supabase-url"
+export SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+node restore_storage.js supabase_storage_backup_2026-06-25_09-00-00
 ```
 
 **エラーが発生した場合:**

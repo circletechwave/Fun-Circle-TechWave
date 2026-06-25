@@ -72,10 +72,146 @@ jobs:
           # ファイル名を環境変数経由で次のステップに渡す
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV
 
-      - name: Upload Backup Artifact
+      - name: Backup Storage Files
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "📦 Starting Supabase Storage backup..."
+
+          # バックアップディレクトリ作成
+          BACKUP_DATE=$(date +'%Y-%m-%d_%H-%M-%S')
+          STORAGE_DIR="supabase_storage_backup_${BACKUP_DATE}"
+          mkdir -p "$STORAGE_DIR"
+
+          # Supabase CLIをインストール
+          npm install -g supabase
+
+          # すべてのバケットのファイルをダウンロード
+          # 注: Supabase Storage APIを使用してファイルをダウンロード
+
+          # Node.jsスクリプトでStorageファイルをダウンロード
+          cat > download_storage.js << 'SCRIPT'
+          const https = require('https');
+          const fs = require('fs');
+          const path = require('path');
+
+          const SUPABASE_URL = process.env.SUPABASE_URL;
+          const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          const STORAGE_DIR = process.argv[2];
+
+          // Storage APIからバケット一覧を取得
+          async function listBuckets() {
+            return new Promise((resolve, reject) => {
+              const url = `${SUPABASE_URL}/storage/v1/bucket`;
+              const options = {
+                headers: {
+                  'Authorization': `Bearer ${SERVICE_KEY}`,
+                  'apikey': SERVICE_KEY
+                }
+              };
+
+              https.get(url, options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => resolve(JSON.parse(data)));
+              }).on('error', reject);
+            });
+          }
+
+          // バケット内のファイル一覧を取得
+          async function listFiles(bucketName) {
+            return new Promise((resolve, reject) => {
+              const url = `${SUPABASE_URL}/storage/v1/object/list/${bucketName}`;
+              const options = {
+                headers: {
+                  'Authorization': `Bearer ${SERVICE_KEY}`,
+                  'apikey': SERVICE_KEY
+                }
+              };
+
+              https.get(url, options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => resolve(JSON.parse(data)));
+              }).on('error', reject);
+            });
+          }
+
+          // ファイルをダウンロード
+          async function downloadFile(bucketName, filePath, destPath) {
+            return new Promise((resolve, reject) => {
+              const url = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${filePath}`;
+              const options = {
+                headers: {
+                  'Authorization': `Bearer ${SERVICE_KEY}`,
+                  'apikey': SERVICE_KEY
+                }
+              };
+
+              const dir = path.dirname(destPath);
+              fs.mkdirSync(dir, { recursive: true });
+
+              const file = fs.createWriteStream(destPath);
+              https.get(url, options, (res) => {
+                res.pipe(file);
+                file.on('finish', () => {
+                  file.close();
+                  resolve();
+                });
+              }).on('error', reject);
+            });
+          }
+
+          // メイン処理
+          (async () => {
+            try {
+              console.log('Fetching buckets...');
+              const buckets = await listBuckets();
+
+              for (const bucket of buckets) {
+                console.log(`Processing bucket: ${bucket.name}`);
+                const files = await listFiles(bucket.name);
+
+                for (const file of files) {
+                  if (!file.name) continue;
+                  const destPath = path.join(STORAGE_DIR, bucket.name, file.name);
+                  console.log(`Downloading: ${bucket.name}/${file.name}`);
+                  await downloadFile(bucket.name, file.name, destPath);
+                }
+              }
+
+              console.log('✅ Storage backup completed!');
+            } catch (error) {
+              console.error('❌ Storage backup failed:', error);
+              process.exit(1);
+            }
+          })();
+          SCRIPT
+
+          # Node.jsスクリプトを実行
+          node download_storage.js "$STORAGE_DIR"
+
+          # 圧縮してサイズを削減
+          tar -czf "${STORAGE_DIR}.tar.gz" "$STORAGE_DIR"
+
+          echo "✅ Storage backup created: ${STORAGE_DIR}.tar.gz"
+          ls -lh "${STORAGE_DIR}.tar.gz"
+
+          # 環境変数に保存
+          echo "STORAGE_ARCHIVE=${STORAGE_DIR}.tar.gz" >> $GITHUB_ENV
+
+      - name: Upload Database Backup Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.FILENAME }}
+          name: database-backup-${{ env.FILENAME }}
           path: ${{ env.FILENAME }}
+          retention-days: 30
+
+      - name: Upload Storage Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: storage-backup-${{ env.STORAGE_ARCHIVE }}
+          path: ${{ env.STORAGE_ARCHIVE }}
           # 30日間（約1ヶ月）保存し、期限が切れたら自動削除する
           retention-days: 30
