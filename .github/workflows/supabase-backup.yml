@@ -1,9 +1,12 @@
 name: Supabase Database Backup
 
 on:
-  push:
-    branches:
-      - feature/supabase-backup  # 動作確認用（一時的）
+  # 開発時の動作確認用pushトリガー
+  # バックアップ機能を修正する際は、以下をコメント解除してfeatureブランチで動作確認できます
+  # 使用例: feature/fix-backup-script ブランチで修正する場合
+  # push:
+  #   branches:
+  #     - feature/fix-backup-script  # 修正用のブランチ名に変更してください
   schedule:
     # 毎週日曜日 00:00 UTC (日本時間 09:00) に定期実行
     - cron: '0 0 * * 0'
