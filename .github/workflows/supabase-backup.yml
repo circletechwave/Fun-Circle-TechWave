@@ -1,6 +1,9 @@
 name: Supabase Database Backup
 
 on:
+  push:
+    branches:
+      - feature/supabase-backup  # 動作確認用（一時的）
   schedule:
     # 毎週日曜日 00:00 UTC (日本時間 09:00) に定期実行
     - cron: '0 0 * * 0'
