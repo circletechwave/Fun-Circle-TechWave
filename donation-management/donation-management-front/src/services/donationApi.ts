@@ -405,24 +405,17 @@ export const donationApi = {
         .maybeSingle();
 
       if (error) {
-        console.error('getActiveLending error:', error);
         throw error;
       }
 
-      console.log('getActiveLending data:', data);
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const item: any = data;
-      const lending: Lending | null = item ? {
-        ...item,
-        users: item.users
+      // Supabaseの返り値をLending型に変換
+      const lending: Lending | null = data ? {
+        ...data,
+        users: data.users
       } : null;
-
-      console.log('Processed lending:', lending);
 
       return { success: true, data: lending };
     } catch (error) {
-      console.error('getActiveLending exception:', error);
       return {
         success: false,
         data: null,
