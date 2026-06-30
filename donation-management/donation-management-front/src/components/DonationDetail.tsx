@@ -49,29 +49,34 @@ export default function DonationDetail({ donationId, onBack, onEdit, currentUser
     const fetchDonationDetails = async () => {
         try {
             const result = await donationApi.getDonation(donationId);
-            if (result.success) {
-                setDonation(result.data);
-                // ステータスが貸出中の場合、現在のアクティブな貸出レコードを取得
-                if (result.data.status === 'lending') {
-                    setLendingLoading(true);
-                    try {
-                        const lendingResult = await donationApi.getActiveLending(donationId);
-                        if (lendingResult.success) {
-                            setActiveLending(lendingResult.data);
-                        } else {
-                            setActiveLending(null);
-                            console.error('貸出情報の取得に失敗しました:', lendingResult.error);
-                        }
-                    } finally {
-                        setLendingLoading(false);
-                    }
-                } else {
-                    setActiveLending(null);
-                    setLendingLoading(false);
-                }
-            } else {
+
+            // 早期リターン: エラー時
+            if (!result.success) {
                 setError(result.error || '詳細の取得に失敗しました');
+                return;
             }
+
+            setDonation(result.data);
+
+            // ステータスが貸出中でない場合は貸出情報をクリアして終了
+            if (result.data.status !== 'lending') {
+                setActiveLending(null);
+                setLendingLoading(false);
+                return;
+            }
+
+            // 貸出中の場合、アクティブな貸出レコードを取得
+            setLendingLoading(true);
+            const lendingResult = await donationApi.getActiveLending(donationId);
+            setLendingLoading(false);
+
+            if (!lendingResult.success) {
+                setActiveLending(null);
+                console.error('貸出情報の取得に失敗しました:', lendingResult.error);
+                return;
+            }
+
+            setActiveLending(lendingResult.data);
         } catch {
             setError('エラーが発生しました');
         } finally {

@@ -404,15 +404,18 @@ export const donationApi = {
         .eq('status', 'active')
         .maybeSingle();
 
-      if (error) {
-        throw error;
+      if (error) throw error;
+
+      // データが存在しない場合
+      if (!data) {
+        return { success: true, data: null };
       }
 
       // Supabaseの返り値をLending型に変換
-      const lending: Lending | null = data ? {
+      const lending: Lending = {
         ...data,
         users: data.users
-      } : null;
+      };
 
       return { success: true, data: lending };
     } catch (error) {
