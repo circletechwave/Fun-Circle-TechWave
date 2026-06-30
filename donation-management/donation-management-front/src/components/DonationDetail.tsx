@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Donation, Lending } from '../types/donation';
 import { donationApi } from '../services/donationApi';
 
@@ -46,7 +46,7 @@ export default function DonationDetail({ donationId, onBack, onEdit, currentUser
     const [purpose, setPurpose] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
 
-    const fetchDonationDetails = async () => {
+    const fetchDonationDetails = useCallback(async () => {
         try {
             const result = await donationApi.getDonation(donationId);
 
@@ -82,11 +82,11 @@ export default function DonationDetail({ donationId, onBack, onEdit, currentUser
         } finally {
             setLoading(false);
         }
-    };
+    }, [donationId]);
 
     useEffect(() => {
         fetchDonationDetails();
-    }, [donationId]);
+    }, [fetchDonationDetails]);
 
     const handleBorrowClick = () => {
         const twoWeeksLater = new Date();
