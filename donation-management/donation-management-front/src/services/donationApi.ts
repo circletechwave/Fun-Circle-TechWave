@@ -1,4 +1,4 @@
-import type { Donation, Category, Location, SearchFilters, PaginationInfo, Tag } from '../types/donation';
+import type { Donation, Category, Location, SearchFilters, PaginationInfo, Tag, Lending } from '../types/donation';
 
 import { supabase } from '../lib/supabase';
 
@@ -389,6 +389,99 @@ export const donationApi = {
       return { success: true, data: data as Tag[] };
     } catch (error) {
       return { success: false, data: [], error: error instanceof Error ? error.message : 'タグの取得に失敗しました' };
+    }
+  },
+
+  async getActiveLending(donationId: string): Promise<{ success: boolean; data: Lending | null; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('lendings')
+        .select(`
+          *,
+          users!fk_lendings_user (id, name, email)
+        `)
+        .eq('donation_id', donationId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      // データが存在しない場合
+      if (!data) {
+        return { success: true, data: null };
+      }
+
+      // Supabaseの返り値をLending型に変換
+      const lending: Lending = {
+        ...data,
+        users: data.users
+      };
+
+      return { success: true, data: lending };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : '貸出情報の取得に失敗しました'
+      };
+    }
+  },
+
+
+  async borrowDonation(donationId: string, dueDate: string, purpose?: string): Promise<{ success: boolean; data: Lending | null; error?: string }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        throw new Error('ログインユーザーの取得に失敗しました。再ログインしてください。');
+      }
+
+      // 貸出レコードを作成
+      // トリガー update_donation_status_on_lending が自動的に donations.status を 'lending' に更新する
+      const { data, error } = await supabase
+        .from('lendings')
+        .insert({
+          donation_id: donationId,
+          user_id: userId,
+          due_date: dueDate,
+          purpose: purpose || null,
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data: data as Lending };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : '貸出処理に失敗しました'
+      };
+    }
+  },
+
+  async returnDonation(lendingId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // 貸出レコードのステータスを返却済みに更新
+      // トリガー update_donation_status_on_lending が自動的に donations.status を 'available' に更新する
+      const { error: lendingError } = await supabase
+        .from('lendings')
+        .update({
+          status: 'returned',
+          returned_at: new Date().toISOString()
+        })
+        .eq('id', lendingId);
+
+      if (lendingError) throw lendingError;
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '返却処理に失敗しました'
+      };
     }
   },
 };

@@ -87,3 +87,23 @@ export interface PaginationInfo {
   total: number;
   total_pages: number;
 }
+
+export interface Lending {
+  id: string;
+  donation_id: string;
+  user_id: string;
+  borrowed_at: string;
+  due_date: string;
+  returned_at?: string | null;
+  status: 'active' | 'returned' | 'overdue' | 'cancelled';
+  purpose?: string | null;
+  extension_count: number;
+  approved_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  users?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
