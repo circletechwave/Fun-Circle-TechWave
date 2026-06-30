@@ -1,0 +1,391 @@
+name: Supabase Database Backup
+
+on:
+  # 開発時の動作確認用pushトリガー
+  # バックアップ機能を修正する際は、以下をコメント解除してfeatureブランチで動作確認できます
+  # 使用例: feature/fix-backup-script ブランチで修正する場合
+  # push:
+  #   branches:
+  #     - feature/fix-backup-script  # 修正用のブランチ名に変更してください
+  schedule:
+    # 毎週日曜日 00:00 UTC (日本時間 09:00) に定期実行
+    - cron: '0 0 * * 0'
+  workflow_dispatch: # GitHubのUIから手動でバックアップを実行可能にする
+
+jobs:
+  backup:
+    name: Database Backup
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL 17 client
+        run: |
+          # PostgreSQL公式のAPTリポジトリを追加（apt-key非推奨対応）
+          sudo mkdir -p /etc/apt/keyrings
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+
+          # パッケージリストを更新してPostgreSQL 17クライアントをインストール
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+          # インストール確認とバージョン表示
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Run pg_dump (Full Backup)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Error: SUPABASE_DB_URL is not set."
+            exit 1
+          fi
+
+          # バックアップファイル名に実行時の日付を付与
+          BACKUP_DATE=$(date +'%Y-%m-%d_%H-%M-%S')
+          FILENAME="supabase_full_backup_${BACKUP_DATE}.sql"
+
+          echo "Starting full database backup..."
+          echo "Backup includes: schemas (public, auth, storage), roles, and privileges"
+
+          # 完全バックアップ: すべてのスキーマ、ロール、権限を含む
+          # --clean: 復元時に既存オブジェクトを削除
+          # --if-exists: DROP文にIF EXISTSを追加
+          # --create: データベース作成文を含める
+          # すべてのスキーマを明示的に指定（public, auth, storage, extensions等）
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" \
+            --clean \
+            --if-exists \
+            --create \
+            --format=plain \
+            --encoding=UTF8 \
+            --schema=public \
+            --schema=auth \
+            --schema=storage \
+            --schema=extensions \
+            --schema=graphql_public \
+            > "$FILENAME"
+
+          echo "✅ Full database backup created: $FILENAME"
+          ls -lh "$FILENAME"
+
+          # ファイル名を環境変数経由で次のステップに渡す
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+
+      - name: Backup Storage Files
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "📦 Starting Supabase Storage backup..."
+
+          # バックアップディレクトリ作成
+          BACKUP_DATE=$(date +'%Y-%m-%d_%H-%M-%S')
+          STORAGE_DIR="supabase_storage_backup_${BACKUP_DATE}"
+          mkdir -p "$STORAGE_DIR"
+
+          # Supabase CLIをインストール
+          npm install -g supabase
+
+          # すべてのバケットのファイルをダウンロード
+          # 注: Supabase Storage APIを使用してファイルをダウンロード
+
+          # Node.jsスクリプトでStorageファイルをダウンロード
+          cat > download_storage.js << 'SCRIPT'
+          const https = require('https');
+          const http = require('http');
+          const fs = require('fs');
+          const path = require('path');
+          const { URL } = require('url');
+
+          const SUPABASE_URL = process.env.SUPABASE_URL;
+          const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          const STORAGE_DIR = process.argv[2];
+
+          // 環境変数チェック
+          if (!SUPABASE_URL) {
+            console.error('❌ Error: SUPABASE_URL is not set');
+            process.exit(1);
+          }
+          if (!SERVICE_KEY) {
+            console.error('❌ Error: SUPABASE_SERVICE_ROLE_KEY is not set');
+            process.exit(1);
+          }
+          if (!STORAGE_DIR) {
+            console.error('❌ Error: STORAGE_DIR is not provided');
+            process.exit(1);
+          }
+
+          console.log('Using Supabase URL:', SUPABASE_URL);
+
+          // Storage APIからバケット一覧を取得
+          async function listBuckets() {
+            return new Promise((resolve, reject) => {
+              const apiUrl = `${SUPABASE_URL}/storage/v1/bucket`;
+              console.log('Fetching buckets from:', apiUrl);
+
+              const parsedUrl = new URL(apiUrl);
+              const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+              const options = {
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port,
+                path: parsedUrl.pathname,
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${SERVICE_KEY}`,
+                  'apikey': SERVICE_KEY
+                }
+              };
+
+              const req = protocol.request(options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                  if (res.statusCode >= 200 && res.statusCode < 300) {
+                    try {
+                      resolve(JSON.parse(data));
+                    } catch (e) {
+                      console.error('Failed to parse response:', data);
+                      reject(new Error(`Failed to parse response: ${data}`));
+                    }
+                  } else {
+                    console.error(`HTTP ${res.statusCode}:`, data);
+                    reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+                  }
+                });
+              });
+
+              req.on('error', reject);
+              req.end();
+            });
+          }
+
+          // バケット内のファイル一覧を取得（ページネーション対応）
+          async function listFiles(bucketName, prefix = '') {
+            const allFiles = [];
+            let offset = 0;
+            const limit = 1000;
+
+            console.log(`Fetching files from bucket: ${bucketName}`);
+
+            while (true) {
+              const files = await listFilesPage(bucketName, prefix, limit, offset);
+
+              if (!Array.isArray(files) || files.length === 0) {
+                break;
+              }
+
+              allFiles.push(...files);
+              console.log(`  Retrieved ${files.length} files (total: ${allFiles.length})`);
+
+              // 取得件数がlimitより少ない場合、最後のページに到達
+              if (files.length < limit) {
+                break;
+              }
+
+              offset += limit;
+            }
+
+            console.log(`Found ${allFiles.length} files in ${bucketName}`);
+            return allFiles;
+          }
+
+          // 1ページ分のファイル一覧を取得
+          async function listFilesPage(bucketName, prefix, limit, offset) {
+            return new Promise((resolve, reject) => {
+              const apiUrl = `${SUPABASE_URL}/storage/v1/object/list/${bucketName}`;
+
+              const parsedUrl = new URL(apiUrl);
+              const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+              const options = {
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port,
+                path: parsedUrl.pathname + parsedUrl.search,
+                method: 'POST',  // Storage APIはPOSTメソッドを使用
+                headers: {
+                  'Authorization': `Bearer ${SERVICE_KEY}`,
+                  'apikey': SERVICE_KEY,
+                  'Content-Type': 'application/json'
+                }
+              };
+
+              const req = protocol.request(options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                  if (res.statusCode >= 200 && res.statusCode < 300) {
+                    try {
+                      const result = JSON.parse(data);
+                      resolve(result);
+                    } catch (e) {
+                      console.error('Failed to parse response:', data);
+                      reject(new Error(`Failed to parse response: ${data}`));
+                    }
+                  } else {
+                    console.error(`HTTP ${res.statusCode}:`, data);
+                    reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+                  }
+                });
+              });
+
+              req.on('error', reject);
+
+              // POSTボディを送信（ページネーション対応）
+              req.write(JSON.stringify({ prefix: prefix, limit: limit, offset: offset }));
+              req.end();
+            });
+          }
+
+          // ファイルをダウンロード
+          async function downloadFile(bucketName, filePath, destPath) {
+            return new Promise((resolve, reject) => {
+              const apiUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${filePath}`;
+
+              const parsedUrl = new URL(apiUrl);
+              const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+              const options = {
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port,
+                path: parsedUrl.pathname + parsedUrl.search,
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${SERVICE_KEY}`,
+                  'apikey': SERVICE_KEY
+                }
+              };
+
+              const dir = path.dirname(destPath);
+              fs.mkdirSync(dir, { recursive: true });
+
+              const file = fs.createWriteStream(destPath);
+
+              const req = protocol.request(options, (res) => {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                  res.pipe(file);
+                  file.on('finish', () => {
+                    file.close();
+                    resolve();
+                  });
+                  file.on('error', (err) => {
+                    fs.unlink(destPath, () => {}); // エラー時はファイル削除
+                    reject(err);
+                  });
+                } else {
+                  let data = '';
+                  res.on('data', chunk => data += chunk);
+                  res.on('end', () => {
+                    file.close();
+                    fs.unlink(destPath, () => {}); // エラー時はファイル削除
+                    reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+                  });
+                }
+              });
+
+              req.on('error', (err) => {
+                file.close();
+                fs.unlink(destPath, () => {}); // エラー時はファイル削除
+                reject(err);
+              });
+
+              req.end();
+            });
+          }
+
+          // メイン処理
+          (async () => {
+            try {
+              console.log('Fetching buckets...');
+              const buckets = await listBuckets();
+
+              if (!Array.isArray(buckets)) {
+                console.error('Error: buckets is not an array:', buckets);
+                process.exit(1);
+              }
+
+              console.log(`Found ${buckets.length} bucket(s)`);
+
+              if (buckets.length === 0) {
+                console.log('⚠️  No buckets found. Storage backup skipped.');
+                console.log('✅ Storage backup completed (no files to backup)');
+                process.exit(0);
+              }
+
+              for (const bucket of buckets) {
+                console.log(`\n📦 Processing bucket: ${bucket.name || bucket.id}`);
+                const bucketName = bucket.name || bucket.id;
+
+                try {
+                  const files = await listFiles(bucketName);
+
+                  if (!Array.isArray(files)) {
+                    console.error(`Error: files is not an array for bucket ${bucketName}:`, files);
+                    continue;
+                  }
+
+                  if (files.length === 0) {
+                    console.log(`  No files in bucket: ${bucketName}`);
+                    continue;
+                  }
+
+                  for (const file of files) {
+                    if (!file.name) {
+                      console.log('  Skipping file without name:', file);
+                      continue;
+                    }
+
+                    const destPath = path.join(STORAGE_DIR, bucketName, file.name);
+                    console.log(`  Downloading: ${bucketName}/${file.name}`);
+
+                    try {
+                      await downloadFile(bucketName, file.name, destPath);
+                    } catch (err) {
+                      console.error(`  ⚠️  Failed to download ${bucketName}/${file.name}:`, err.message);
+                      // 個別ファイルのエラーは続行
+                    }
+                  }
+                } catch (err) {
+                  console.error(`⚠️  Error processing bucket ${bucketName}:`, err.message);
+                  // バケットのエラーは続行
+                }
+              }
+
+              console.log('\n✅ Storage backup completed!');
+            } catch (error) {
+              console.error('❌ Storage backup failed:', error);
+              process.exit(1);
+            }
+          })();
+          SCRIPT
+
+          # Node.jsスクリプトを実行
+          node download_storage.js "$STORAGE_DIR"
+
+          # 圧縮してサイズを削減
+          tar -czf "${STORAGE_DIR}.tar.gz" "$STORAGE_DIR"
+
+          echo "✅ Storage backup created: ${STORAGE_DIR}.tar.gz"
+          ls -lh "${STORAGE_DIR}.tar.gz"
+
+          # 環境変数に保存
+          echo "STORAGE_ARCHIVE=${STORAGE_DIR}.tar.gz" >> $GITHUB_ENV
+
+      - name: Upload Database Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup-${{ env.FILENAME }}
+          path: ${{ env.FILENAME }}
+          retention-days: 30
+
+      - name: Upload Storage Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: storage-backup-${{ env.STORAGE_ARCHIVE }}
+          path: ${{ env.STORAGE_ARCHIVE }}
+          # 30日間（約1ヶ月）保存し、期限が切れたら自動削除する
+          retention-days: 30
