@@ -394,6 +394,8 @@ export const donationApi = {
 
   async getActiveLending(donationId: string): Promise<{ success: boolean; data: Lending | null; error?: string }> {
     try {
+      // 稀に残る重複activeレコード（過去の競合発生分など）があっても
+      // maybeSingle()が「複数行該当」エラーにならないよう、最新の1件に絞る
       const { data, error } = await supabase
         .from('lendings')
         .select(`
@@ -402,6 +404,8 @@ export const donationApi = {
         `)
         .eq('donation_id', donationId)
         .eq('status', 'active')
+        .order('borrowed_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (error) throw error;
@@ -431,26 +435,27 @@ export const donationApi = {
   async borrowDonation(donationId: string, dueDate: string, purpose?: string): Promise<{ success: boolean; data: Lending | null; error?: string }> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      if (!userId) {
+      if (!session?.user?.id) {
         throw new Error('ログインユーザーの取得に失敗しました。再ログインしてください。');
       }
 
-      // 貸出レコードを作成
-      // トリガー update_donation_status_on_lending が自動的に donations.status を 'lending' に更新する
+      // ステータス確認とlendings作成をDB側の1トランザクション・行ロックで行うことで、
+      // 複数ユーザーが同時に「借りる」を押した場合の二重貸出を防ぐ
+      // （donations.statusへの反映は既存のトリガーが自動的に行う）
       const { data, error } = await supabase
-        .from('lendings')
-        .insert({
-          donation_id: donationId,
-          user_id: userId,
-          due_date: dueDate,
-          purpose: purpose || null,
-          status: 'active'
-        })
-        .select()
-        .single();
+        .rpc('borrow_donation', {
+          p_donation_id: donationId,
+          p_due_date: dueDate,
+          p_purpose: purpose || null
+        });
 
-      if (error) throw error;
+      if (error) {
+        // 万一RPCを介さずにINSERTが競合した場合の保険（ユニーク制約違反）
+        if (error.code === '23505') {
+          return { success: false, data: null, error: 'この品は現在貸出中です' };
+        }
+        throw error;
+      }
 
       return { success: true, data: data as Lending };
     } catch (error) {
