@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { AuditLogFilters, AuditLogListResponse } from '../types/auditLog';
+import type { AppUser, UserRole } from '../types/user';
 
 /**
  * 管理者API（Supabase直接アクセス）
@@ -62,5 +63,66 @@ export const adminApi = {
         total_pages,
       },
     };
+  },
+
+  /**
+   * ユーザー一覧を取得（管理画面でのロール変更対象選択用）
+   */
+  async getUsers(): Promise<{ success: boolean; data: AppUser[]; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, email, name, role, department, is_active, created_at')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        return { success: false, data: [], error: error.message || 'ユーザー一覧の取得に失敗しました' };
+      }
+
+      return { success: true, data: (data || []) as AppUser[] };
+    } catch (error) {
+      return {
+        success: false,
+        data: [],
+        error: error instanceof Error ? error.message : 'ユーザー一覧の取得に失敗しました',
+      };
+    }
+  },
+
+  /**
+   * ユーザーのロールを変更（admin/systemロールのみRLS・トリガーで許可）
+   * 昇格・降格操作は監査ログに記録する
+   */
+  async updateUserRole(targetUser: AppUser, newRole: UserRole): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ role: newRole })
+        .eq('id', targetUser.id);
+
+      if (error) {
+        return { success: false, error: error.message || 'ロールの変更に失敗しました' };
+      }
+
+      // 監査ログに記録（エラーは無視、ユーザー体験を損なわない）
+      const { data: { user } } = await supabase.auth.getUser();
+      supabase.from('audit_logs').insert({
+        user_id: user?.id,
+        user_email: user?.email,
+        action: 'USER_ROLE_UPDATE',
+        table_name: 'users',
+        record_id: targetUser.id,
+        old_values: { role: targetUser.role },
+        new_values: { role: newRole },
+      }).then(undefined, () => {});
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'ロールの変更に失敗しました',
+      };
+    }
   },
 };

@@ -9,7 +9,8 @@ export type AuditAction =
   | 'DONATION_DELETE'
   | 'LENDING_CREATE'
   | 'LENDING_RETURN'
-  | 'API_ERROR';
+  | 'API_ERROR'
+  | 'USER_ROLE_UPDATE';
 
 export interface AuditLog {
   id: string;
@@ -64,6 +65,7 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   LENDING_CREATE: '貸出作成',
   LENDING_RETURN: '返却処理',
   API_ERROR: 'APIエラー',
+  USER_ROLE_UPDATE: 'ユーザー権限変更',
 };
 
 export const ACTION_CATEGORIES: Record<AuditAction, 'security' | 'application'> = {
@@ -78,4 +80,5 @@ export const ACTION_CATEGORIES: Record<AuditAction, 'security' | 'application'> 
   LENDING_CREATE: 'application',
   LENDING_RETURN: 'application',
   API_ERROR: 'application',
+  USER_ROLE_UPDATE: 'security',
 };
