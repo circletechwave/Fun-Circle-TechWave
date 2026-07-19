@@ -454,7 +454,8 @@ export const donationApi = {
         if (error.code === '23505') {
           return { success: false, data: null, error: 'この品は現在貸出中です' };
         }
-        throw error;
+        // instanceof Errorの判定に依存せず、プロパティを直接参照する
+        return { success: false, data: null, error: error.message || '貸出処理に失敗しました' };
       }
 
       return { success: true, data: data as Lending };
