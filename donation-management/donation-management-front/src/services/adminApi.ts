@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { AuditLogFilters, AuditLogListResponse } from '../types/auditLog';
-import type { Category, SubCategory, Location } from '../types/donation';
+import type { Category, SubCategory, Location, Tag } from '../types/donation';
 
 /**
  * 管理者API（Supabase直接アクセス）
@@ -221,6 +221,60 @@ export const adminApi = {
       return {
         success: false,
         error: error instanceof Error ? error.message : '保管場所の削除に失敗しました',
+      };
+    }
+  },
+
+  /**
+   * タグを新規作成（admin/systemロールのみRLSで許可）
+   */
+  async createTag(name: string): Promise<{ success: boolean; data: Tag | null; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('tags')
+        .insert({ name })
+        .select()
+        .single();
+
+      if (error) {
+        // 同名タグが既に存在する場合(UNIQUE制約違反)
+        if (error.code === '23505') {
+          return { success: false, data: null, error: '同じ名前のタグが既に存在します' };
+        }
+        return { success: false, data: null, error: error.message || 'タグの作成に失敗しました' };
+      }
+
+      return { success: true, data: data as Tag };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'タグの作成に失敗しました',
+      };
+    }
+  },
+
+  /**
+   * タグを削除（admin/systemロールのみRLSで許可）
+   * 使用中のタグ(donation_tagsに紐付いているもの)はFK制約により削除が拒否される
+   */
+  async deleteTag(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.from('tags').delete().eq('id', id);
+
+      if (error) {
+        // 使用中タグの削除(外部キー制約違反)
+        if (error.code === '23503') {
+          return { success: false, error: 'このタグは寄贈物に使用されているため削除できません' };
+        }
+        return { success: false, error: error.message || 'タグの削除に失敗しました' };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'タグの削除に失敗しました',
       };
     }
   },

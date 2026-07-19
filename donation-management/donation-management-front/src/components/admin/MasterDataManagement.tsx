@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { CategoryManagement } from './CategoryManagement';
 import { SubCategoryManagement } from './SubCategoryManagement';
 import { LocationManagement } from './LocationManagement';
+import { TagManagement } from './TagManagement';
 
 interface MasterDataManagementProps {
   onBack: () => void;
 }
 
-type MasterDataTab = 'categories' | 'sub_categories' | 'locations';
+type MasterDataTab = 'categories' | 'sub_categories' | 'locations' | 'tags';
 
 /**
- * マスタデータ（カテゴリ・サブカテゴリ・保管場所）管理コンポーネント
+ * マスタデータ（カテゴリ・サブカテゴリ・保管場所・タグ）管理コンポーネント
  * 管理者のみ追加・削除可能
  */
 export function MasterDataManagement({ onBack }: MasterDataManagementProps) {
@@ -44,11 +45,18 @@ export function MasterDataManagement({ onBack }: MasterDataManagementProps) {
         >
           保管場所
         </button>
+        <button
+          onClick={() => setTab('tags')}
+          style={{ ...styles.tabButton, ...(tab === 'tags' ? styles.tabButtonActive : {}) }}
+        >
+          タグ
+        </button>
       </div>
 
       {tab === 'categories' && <CategoryManagement />}
       {tab === 'sub_categories' && <SubCategoryManagement />}
       {tab === 'locations' && <LocationManagement />}
+      {tab === 'tags' && <TagManagement />}
     </div>
   );
 }
