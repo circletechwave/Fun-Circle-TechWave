@@ -185,9 +185,10 @@ export default function AuthComponent() {
               width: '100%',
               padding: '16px',
               fontSize: '1.1rem',
-              backgroundColor: 'transparent',
-              color: '#666',
-              border: 'none',
+              backgroundColor: '#f0f0f0',
+              color: '#333',
+              border: '1px solid #ccc',
+              borderRadius: '8px',
               cursor: 'pointer'
             }}
           >
