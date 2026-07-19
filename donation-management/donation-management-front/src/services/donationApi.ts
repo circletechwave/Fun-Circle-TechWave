@@ -338,12 +338,20 @@ export const donationApi = {
 
   async deleteDonation(id: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('donations')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq('id', id)
+        .select('id');
 
       if (error) throw error;
+
+      // RLSにより対象行が0件だった場合、エラーは発生せず空配列が返るため
+      // 明示的にチェックしないと削除が成功したように見えてしまう
+      if (!data || data.length === 0) {
+        return { success: false, error: '削除する権限がないか、対象の寄贈物が見つかりませんでした' };
+      }
+
       return { success: true };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : '削除に失敗しました' };

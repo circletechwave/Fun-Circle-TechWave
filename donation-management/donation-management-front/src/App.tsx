@@ -76,7 +76,11 @@ function App() {
   const handleDelete = async () => {
     if (selectedDonation) {
       try {
-        await donationApi.deleteDonation(selectedDonation.id)
+        const result = await donationApi.deleteDonation(selectedDonation.id)
+        if (!result.success) {
+          alert(result.error || '削除に失敗しました')
+          return
+        }
         setCurrentView('list')
       } catch (error) {
         console.error('Failed to delete donation:', error)
