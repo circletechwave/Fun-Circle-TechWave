@@ -1,6 +1,7 @@
 import type { Donation, Category, Location, SearchFilters, PaginationInfo, Tag, Lending } from '../types/donation';
 
 import { supabase } from '../lib/supabase';
+import { lendingLogger } from './lendingLogger';
 
 interface DonationListResponse {
   success: boolean;
@@ -452,6 +453,9 @@ export const donationApi = {
 
       if (error) throw error;
 
+      // 監査ログに記録（エラーは無視、ユーザー体験を損なわない）
+      lendingLogger.logLendingCreate(donationId, data.id).catch(() => {});
+
       return { success: true, data: data as Lending };
     } catch (error) {
       return {
@@ -475,6 +479,9 @@ export const donationApi = {
         .eq('id', lendingId);
 
       if (lendingError) throw lendingError;
+
+      // 監査ログに記録（エラーは無視、ユーザー体験を損なわない）
+      lendingLogger.logLendingReturn(lendingId).catch(() => {});
 
       return { success: true };
     } catch (error) {
