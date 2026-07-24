@@ -1,3 +1,10 @@
+// PERMISSION_DENIED・API_ERRORは監査ログのアクション種別・フィルターUIには
+// 存在するが、現時点でこれらを実際にINSERTするコードはどこにも存在しない
+// （予約済みだが未使用のアクション種別）。将来実装する場合の想定発生箇所:
+//   - PERMISSION_DENIED: RLSやAPI側の権限チェック（例: auditLogList.tsの
+//     403 Forbidden、donations/lendingsのRLS拒否時）
+//   - API_ERROR: バックエンド(donation-management-back)エンドポイントの
+//     予期しない例外・500エラー発生時
 export type AuditAction =
   | 'LOGIN_SUCCESS'
   | 'LOGIN_FAILURE'
