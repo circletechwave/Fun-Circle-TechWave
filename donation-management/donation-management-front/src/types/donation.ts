@@ -51,6 +51,7 @@ export interface Category {
 
 export interface SubCategory {
   id: string;
+  category_id: string;
   name: string;
   description?: string;
   display_order: number;

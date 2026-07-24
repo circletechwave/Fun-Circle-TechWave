@@ -33,6 +33,11 @@ export const donationApi = {
 
   async searchDonations(filters: Partial<SearchFilters>): Promise<DonationListResponse> {
     try {
+      // tag_idで絞り込む場合はdonation_tagsを!innerにする必要がある。
+      // !leftのままだと.filter()を付けても親行(donations)の絞り込みには
+      // 反映されず、タグを選択しても一覧が絞られない不具合になる。
+      const donationTagsEmbed = filters.tag_id ? 'donation_tags!inner' : 'donation_tags!left';
+
       let query = supabase
         .from('donations')
         .select(`
@@ -41,7 +46,7 @@ export const donationApi = {
           sub_categories (id, name),
           locations (id, name),
           donation_images (image_url, display_order),
-          donation_tags!left (
+          ${donationTagsEmbed} (
             tags (id, name)
           )
         `, { count: 'exact' })
@@ -49,7 +54,6 @@ export const donationApi = {
 
       // Apply filters
       if (filters.tag_id) {
-        // Use inner join for tag filtering
         query = query.filter('donation_tags.tag_id', 'eq', filters.tag_id);
       }
       if (filters.category_id) {
