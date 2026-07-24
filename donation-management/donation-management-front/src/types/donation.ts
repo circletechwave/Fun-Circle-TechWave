@@ -33,6 +33,7 @@ export interface Donation {
 
   avg_rating?: number;
   review_count?: number;
+  lending_count?: number;
   image_urls?: string[];
   tags?: Tag[];
   created_by?: string;
@@ -50,6 +51,7 @@ export interface Category {
 
 export interface SubCategory {
   id: string;
+  category_id: string;
   name: string;
   description?: string;
   display_order: number;

@@ -1,6 +1,7 @@
 import type { Donation, Category, Location, SearchFilters, PaginationInfo, Tag, Lending } from '../types/donation';
 
 import { supabase } from '../lib/supabase';
+import { lendingLogger } from './lendingLogger';
 
 interface DonationListResponse {
   success: boolean;
@@ -32,6 +33,11 @@ export const donationApi = {
 
   async searchDonations(filters: Partial<SearchFilters>): Promise<DonationListResponse> {
     try {
+      // tag_idで絞り込む場合はdonation_tagsを!innerにする必要がある。
+      // !leftのままだと.filter()を付けても親行(donations)の絞り込みには
+      // 反映されず、タグを選択しても一覧が絞られない不具合になる。
+      const donationTagsEmbed = filters.tag_id ? 'donation_tags!inner' : 'donation_tags!left';
+
       let query = supabase
         .from('donations')
         .select(`
@@ -40,7 +46,7 @@ export const donationApi = {
           sub_categories (id, name),
           locations (id, name),
           donation_images (image_url, display_order),
-          donation_tags!left (
+          ${donationTagsEmbed} (
             tags (id, name)
           )
         `, { count: 'exact' })
@@ -48,7 +54,6 @@ export const donationApi = {
 
       // Apply filters
       if (filters.tag_id) {
-        // Use inner join for tag filtering
         query = query.filter('donation_tags.tag_id', 'eq', filters.tag_id);
       }
       if (filters.category_id) {
@@ -73,7 +78,8 @@ export const donationApi = {
       const column = sort.replace('-', '');
 
       if (column === 'popular') {
-        query = query.order('created_at', { ascending: false });
+        // 人気順 = 累計貸出回数(donations.lending_count)が多い順
+        query = query.order('lending_count', { ascending: false });
       } else {
         query = query.order(column, { ascending: isAsc });
       }
@@ -338,12 +344,20 @@ export const donationApi = {
 
   async deleteDonation(id: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('donations')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq('id', id)
+        .select('id');
 
       if (error) throw error;
+
+      // RLSにより対象行が0件だった場合、エラーは発生せず空配列が返るため
+      // 明示的にチェックしないと削除が成功したように見えてしまう
+      if (!data || data.length === 0) {
+        return { success: false, error: '削除する権限がないか、対象の寄贈物が見つかりませんでした' };
+      }
+
       return { success: true };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : '削除に失敗しました' };
@@ -394,6 +408,8 @@ export const donationApi = {
 
   async getActiveLending(donationId: string): Promise<{ success: boolean; data: Lending | null; error?: string }> {
     try {
+      // 稀に残る重複activeレコード（過去の競合発生分など）があっても
+      // maybeSingle()が「複数行該当」エラーにならないよう、最新の1件に絞る
       const { data, error } = await supabase
         .from('lendings')
         .select(`
@@ -402,6 +418,8 @@ export const donationApi = {
         `)
         .eq('donation_id', donationId)
         .eq('status', 'active')
+        .order('borrowed_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (error) throw error;
@@ -431,26 +449,31 @@ export const donationApi = {
   async borrowDonation(donationId: string, dueDate: string, purpose?: string): Promise<{ success: boolean; data: Lending | null; error?: string }> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      if (!userId) {
+      if (!session?.user?.id) {
         throw new Error('ログインユーザーの取得に失敗しました。再ログインしてください。');
       }
 
-      // 貸出レコードを作成
-      // トリガー update_donation_status_on_lending が自動的に donations.status を 'lending' に更新する
+      // ステータス確認とlendings作成をDB側の1トランザクション・行ロックで行うことで、
+      // 複数ユーザーが同時に「借りる」を押した場合の二重貸出を防ぐ
+      // （donations.statusへの反映は既存のトリガーが自動的に行う）
       const { data, error } = await supabase
-        .from('lendings')
-        .insert({
-          donation_id: donationId,
-          user_id: userId,
-          due_date: dueDate,
-          purpose: purpose || null,
-          status: 'active'
-        })
-        .select()
-        .single();
+        .rpc('borrow_donation', {
+          p_donation_id: donationId,
+          p_due_date: dueDate,
+          p_purpose: purpose || null
+        });
 
-      if (error) throw error;
+      if (error) {
+        // 万一RPCを介さずにINSERTが競合した場合の保険（ユニーク制約違反）
+        if (error.code === '23505') {
+          return { success: false, data: null, error: 'この品は現在貸出中です' };
+        }
+        // instanceof Errorの判定に依存せず、プロパティを直接参照する
+        return { success: false, data: null, error: error.message || '貸出処理に失敗しました' };
+      }
+
+      // 監査ログに記録（エラーは無視、ユーザー体験を損なわない）
+      lendingLogger.logLendingCreate(donationId, data.id).catch(() => {});
 
       return { success: true, data: data as Lending };
     } catch (error) {
@@ -475,6 +498,9 @@ export const donationApi = {
         .eq('id', lendingId);
 
       if (lendingError) throw lendingError;
+
+      // 監査ログに記録（エラーは無視、ユーザー体験を損なわない）
+      lendingLogger.logLendingReturn(lendingId).catch(() => {});
 
       return { success: true };
     } catch (error) {
