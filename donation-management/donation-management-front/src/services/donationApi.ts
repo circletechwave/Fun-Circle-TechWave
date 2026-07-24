@@ -73,7 +73,8 @@ export const donationApi = {
       const column = sort.replace('-', '');
 
       if (column === 'popular') {
-        query = query.order('created_at', { ascending: false });
+        // 人気順 = 累計貸出回数(donations.lending_count)が多い順
+        query = query.order('lending_count', { ascending: false });
       } else {
         query = query.order(column, { ascending: isAsc });
       }
