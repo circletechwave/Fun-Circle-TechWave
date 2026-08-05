@@ -284,26 +284,26 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>画像</label>
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                        <input
-                            type="text"
-                            value={formData.image_urls?.[0] || ''}
-                            onChange={(e) => {
-                                setFormData(prev => ({ ...prev, image_urls: [e.target.value] }));
-                            }}
-                            placeholder="https://example.com/image.jpg"
-                            style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                        />
-                        {formData.image_urls?.[0] && (
-                            <button
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, image_urls: [] }))}
-                                style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                            >
-                                削除
-                            </button>
-                        )}
-                    </div>
+
+                    {formData.image_urls?.[0] && previews.length === 0 && (
+                        <div style={{ marginBottom: '15px' }}>
+                            <p style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>登録済みの画像:</p>
+                            <div style={{ position: 'relative', width: '100px', height: '100px' }}>
+                                <img
+                                    src={formData.image_urls[0]}
+                                    alt="登録済み画像"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px', border: '2px solid #ccc' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, image_urls: [] }))}
+                                    style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                         <label
