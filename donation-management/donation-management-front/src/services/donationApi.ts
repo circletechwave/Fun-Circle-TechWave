@@ -2,6 +2,7 @@ import type { Donation, Category, Location, SearchFilters, PaginationInfo, Tag, 
 
 import { supabase } from '../lib/supabase';
 import { lendingLogger } from './lendingLogger';
+import { storageService } from './storageService';
 
 interface DonationListResponse {
   success: boolean;
@@ -291,6 +292,16 @@ export const donationApi = {
 
       // Update images (Delete all and insert new)
       if (image_urls !== undefined) {
+        // 差し替え・削除によってどの寄贈物からも参照されなくなる画像を
+        // Storageからも削除するため、DBの更新前に現在の画像URLを取得しておく
+        const { data: currentImages } = await supabase
+          .from('donation_images')
+          .select('image_url')
+          .eq('donation_id', id);
+        const orphanedUrls = (currentImages || [])
+          .map((img: { image_url: string }) => img.image_url)
+          .filter((url: string) => !image_urls.includes(url));
+
         // eslint-disable-next-line no-console
         console.debug(`Updating images for donation ${id}. Deleting existing...`);
         await supabase.from('donation_images').delete().eq('donation_id', id);
@@ -306,6 +317,16 @@ export const donationApi = {
         } else {
           // eslint-disable-next-line no-console
           console.debug(`No images provided for donation ${id}, all existing images deleted.`);
+        }
+
+        // 参照されなくなった画像ファイルをStorageから削除する
+        // （失敗しても寄贈物自体の更新は既に成功しているため、エラーはログのみに留める）
+        if (orphanedUrls.length > 0) {
+          try {
+            await storageService.deleteImages(orphanedUrls);
+          } catch (storageError) {
+            console.error('Failed to delete orphaned images from storage:', storageError);
+          }
         }
       }
 
