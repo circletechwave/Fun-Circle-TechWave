@@ -148,7 +148,7 @@ export default function DonationDetail({ donationId, onBack, onEdit, currentUser
         <div className="donation-detail" style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
             <button
                 onClick={onBack}
-                style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+                style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#f0f0f0', color: '#333', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
             >
                 ← 一覧に戻る
             </button>
