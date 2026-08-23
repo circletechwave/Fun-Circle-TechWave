@@ -62,4 +62,34 @@ export const authLogger = {
       user_agent: navigator.userAgent,
     });
   },
+
+  /**
+   * パスワード再設定メールの送信リクエストを記録
+   * 未ログイン状態で実行されるため user_id は常に null
+   * エラーは無視（監査ログの失敗でユーザー体験を損なわない）
+   */
+  async logPasswordResetRequest(email: string) {
+    await supabase.from('audit_logs').insert({
+      user_id: null,
+      user_email: email,
+      action: 'PASSWORD_RESET_REQUEST',
+      user_agent: navigator.userAgent,
+    });
+  },
+
+  /**
+   * パスワード再設定の完了を記録
+   * リセットリンク経由の一時セッションでログイン中のため user_id を取得できる
+   * エラーは無視（監査ログの失敗でユーザー体験を損なわない）
+   */
+  async logPasswordResetComplete(email: string | null) {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    await supabase.from('audit_logs').insert({
+      user_id: user?.id,
+      user_email: email ?? user?.email ?? null,
+      action: 'PASSWORD_RESET_COMPLETE',
+      user_agent: navigator.userAgent,
+    });
+  },
 };

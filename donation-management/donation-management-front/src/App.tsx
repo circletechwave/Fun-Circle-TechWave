@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import AuthComponent from './components/Auth'
+import ResetPassword from './components/ResetPassword'
 import DonationSearch from './components/DonationSearch'
 import DonationForm from './components/DonationForm'
 import DonationDetail from './components/DonationDetail'
@@ -13,7 +14,7 @@ import './App.css'
 type ViewType = 'list' | 'create' | 'edit' | 'detail' | 'admin' | 'admin-master-data'
 
 function App() {
-  const { session, userName, isAdmin, loading, signOut } = useAuth()
+  const { session, userName, isAdmin, loading, signOut, passwordRecovery, clearPasswordRecovery } = useAuth()
   const [currentView, setCurrentView] = useState<ViewType>('list')
   const [selectedDonation, setSelectedDonation] = useState<Donation | undefined>(undefined)
   const [selectedDonationId, setSelectedDonationId] = useState<string | undefined>(undefined)
@@ -106,7 +107,12 @@ function App() {
 
   return (
     <div className="App">
-      {!session ? (
+      {passwordRecovery ? (
+        <div className="auth-container">
+          <h1>HapInS Library</h1>
+          <ResetPassword onComplete={clearPasswordRecovery} />
+        </div>
+      ) : !session ? (
         <div className="auth-container">
           <h1>HapInS Library</h1>
           <AuthComponent />
