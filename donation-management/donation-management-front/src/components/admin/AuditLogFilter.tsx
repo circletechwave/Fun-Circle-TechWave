@@ -43,6 +43,8 @@ export function AuditLogFilter({ filters, onFilterChange }: AuditLogFilterProps)
     'LENDING_CREATE',
     'LENDING_RETURN',
     'API_ERROR',
+    'PASSWORD_RESET_REQUEST',
+    'PASSWORD_RESET_COMPLETE',
   ];
 
   return (
