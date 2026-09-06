@@ -4,13 +4,14 @@ import DonationSearch from './components/DonationSearch'
 import DonationForm from './components/DonationForm'
 import DonationDetail from './components/DonationDetail'
 import { AuditLogDashboard } from './components/admin/AuditLogDashboard'
+import { UserManagement } from './components/admin/UserManagement'
 import { MasterDataManagement } from './components/admin/MasterDataManagement'
 import { useAuth } from './hooks/useAuth'
 import type { Donation } from './types/donation'
 import { donationApi } from './services/donationApi'
 import './App.css'
 
-type ViewType = 'list' | 'create' | 'edit' | 'detail' | 'admin' | 'admin-master-data'
+type ViewType = 'list' | 'create' | 'edit' | 'detail' | 'admin' | 'admin-users' | 'admin-master-data'
 
 function App() {
   const { session, userName, isAdmin, loading, signOut } = useAuth()
@@ -24,6 +25,10 @@ function App() {
 
   const handleAdminBack = () => {
     setCurrentView('list')
+  }
+
+  const handleUserManagementClick = () => {
+    setCurrentView('admin-users')
   }
 
   const handleMasterDataClick = () => {
@@ -150,6 +155,21 @@ function App() {
                     >
                       マスタ管理
                     </button>
+                    <button
+                      onClick={handleUserManagementClick}
+                      className="admin-btn"
+                      style={{
+                        marginLeft: '8px',
+                        padding: '8px 16px',
+                        backgroundColor: '#6f42c1',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ユーザー管理
+                    </button>
                   </>
                 )}
                 <button onClick={signOut} className="sign-out-btn">
@@ -163,6 +183,8 @@ function App() {
               <AuditLogDashboard onBack={handleAdminBack} />
             ) : currentView === 'admin-master-data' ? (
               <MasterDataManagement onBack={handleAdminBack} />
+            ) : currentView === 'admin-users' ? (
+              <UserManagement onBack={handleAdminBack} currentUserId={session?.user?.id} />
             ) : currentView === 'list' ? (
               <DonationSearch
                 onCreate={handleAdd}
