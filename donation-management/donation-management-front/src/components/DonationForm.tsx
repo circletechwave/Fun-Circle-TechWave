@@ -39,8 +39,6 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
     const [previews, setPreviews] = useState<string[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
-    const [isStorageBrowserOpen, setIsStorageBrowserOpen] = useState(false);
-    const [existingImages, setExistingImages] = useState<string[]>([]);
 
     useEffect(() => {
         const loadMasterData = async () => {
@@ -124,22 +122,6 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
         setPreviews([]);
         setSelectedFiles([]);
         if (previews[0]) URL.revokeObjectURL(previews[0]);
-    };
-
-    const toggleStorageBrowser = async () => {
-        if (!isStorageBrowserOpen) {
-            const images = await storageService.listImages();
-            setExistingImages(images);
-        }
-        setIsStorageBrowserOpen(!isStorageBrowserOpen);
-    };
-
-    const selectExistingImage = (url: string) => {
-        setFormData(prev => ({ ...prev, image_urls: [url] }));
-        setIsStorageBrowserOpen(false);
-        // 新しくアップロードしようとしていたものはリセット
-        setPreviews([]);
-        setSelectedFiles([]);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -312,13 +294,6 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                         >
                             PCからアップロード
                         </label>
-                        <button
-                            type="button"
-                            onClick={toggleStorageBrowser}
-                            style={{ padding: '8px 16px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
-                        >
-                            ストレージから選択
-                        </button>
                         <input
                             type="file"
                             accept="image/*"
@@ -327,37 +302,6 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                             id="file-upload"
                         />
                     </div>
-
-                    {isStorageBrowserOpen && (
-                        <div style={{
-                            padding: '15px',
-                            border: '1px solid #eee',
-                            borderRadius: '8px',
-                            marginBottom: '15px',
-                            maxHeight: '300px',
-                            overflowY: 'auto',
-                            backgroundColor: '#f9f9f9'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                <h4 style={{ margin: 0 }}>アップロード済み画像</h4>
-                                <button type="button" onClick={() => setIsStorageBrowserOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#666' }}>閉じる</button>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '10px' }}>
-                                {existingImages.map((url, idx) => (
-                                    <img
-                                        key={idx}
-                                        src={url}
-                                        alt="existing"
-                                        onClick={() => selectExistingImage(url)}
-                                        style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '2px solid transparent' }}
-                                        onMouseOver={e => e.currentTarget.style.borderColor = '#007bff'}
-                                        onMouseOut={e => e.currentTarget.style.borderColor = 'transparent'}
-                                    />
-                                ))}
-                                {existingImages.length === 0 && <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#888' }}>画像がありません</p>}
-                            </div>
-                        </div>
-                    )}
 
                     {previews.length > 0 && (
                         <div style={{ marginBottom: '15px' }}>

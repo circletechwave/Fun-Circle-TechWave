@@ -41,31 +41,5 @@ export const storageService = {
             .getPublicUrl(filePath);
 
         return publicUrl;
-    },
-
-    /**
-     * ストレージ内の画像一覧を取得する
-     */
-    async listImages(): Promise<string[]> {
-        const { data, error } = await supabase.storage
-            .from(BUCKET_NAME)
-            .list('', {
-                limit: 100,
-                offset: 0,
-                sortBy: { column: 'created_at', order: 'desc' }
-            });
-
-        if (error) {
-            console.error('List images error:', error);
-            return [];
-        }
-
-        // 公開URLに変換
-        return data.map(file => {
-            const { data: { publicUrl } } = supabase.storage
-                .from(BUCKET_NAME)
-                .getPublicUrl(file.name);
-            return publicUrl;
-        });
     }
 };
