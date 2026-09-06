@@ -1,7 +1,22 @@
-import { useState, useEffect } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import type { Donation, Category, Location, Tag } from '../types/donation';
 import { donationApi } from '../services/donationApi';
 import { storageService } from '../services/storageService';
+
+// 出版年DatePicker用のカスタム入力欄（他の項目と同じ見た目に揃えるため）
+const YearInput = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+    (props, ref) => (
+        <input
+            {...props}
+            ref={ref}
+            readOnly
+            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', cursor: 'pointer', boxSizing: 'border-box' }}
+        />
+    )
+);
+YearInput.displayName = 'YearInput';
 
 interface DonationFormProps {
     mode: 'create' | 'edit';
@@ -89,13 +104,7 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        // published_yearは数値型として処理
-        if (name === 'published_year') {
-            const numValue = value === '' ? undefined : parseInt(value, 10);
-            setFormData(prev => ({ ...prev, [name]: numValue }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,6 +125,11 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
         // プレビュー作成
         setPreviews([URL.createObjectURL(file)]);
+    };
+
+    // 出版年DatePickerの選択値を年(number)に変換してformDataへ反映
+    const handlePublishedYearChange = (date: Date | null) => {
+        setFormData(prev => ({ ...prev, published_year: date ? date.getFullYear() : undefined }));
     };
 
     const removePreview = () => {
@@ -375,12 +389,14 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>出版年</label>
-                            <input
-                                type="number"
-                                name="published_year"
-                                value={formData.published_year || ''}
-                                onChange={handleChange}
-                                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                            <DatePicker
+                                selected={formData.published_year ? new Date(formData.published_year, 0, 1) : null}
+                                onChange={handlePublishedYearChange}
+                                showYearPicker
+                                dateFormat="yyyy"
+                                placeholderText="年を選択"
+                                isClearable
+                                customInput={<YearInput />}
                             />
                         </div>
                         <div>
