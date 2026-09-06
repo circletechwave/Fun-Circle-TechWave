@@ -3,7 +3,11 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
+  /* このアプリはApp.css側でライト固定の配色を組んでおり、ダークテーマには対応していない。
+     color-scheme: light dark のままだとbutton/select/input等のフォームコントロールが
+     OSのダークモード設定に反応してUAデフォルトの文字色だけ明るくなり、
+     App.css側の明るい背景と衝突して視認できなくなるため、lightに固定する。 */
+  color-scheme: light;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
