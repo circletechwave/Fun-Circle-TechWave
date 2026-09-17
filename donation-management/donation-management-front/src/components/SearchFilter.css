@@ -76,6 +76,10 @@
   border-radius: 6px;
   font-size: 0.875rem;
   background-color: white;
+  color: #1f2328;
+  /* このセレクトは常にlight配色で作っているため、OSがダークモードでも
+     ブラウザ既定のダーク配色（文字色のみ明るくなる等）が混ざらないよう固定する */
+  color-scheme: light;
   cursor: pointer;
 }
 
