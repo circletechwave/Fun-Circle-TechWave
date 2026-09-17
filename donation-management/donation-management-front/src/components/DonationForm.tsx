@@ -1,7 +1,22 @@
-import { useState, useEffect } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import type { Donation, Category, Location, Tag } from '../types/donation';
 import { donationApi } from '../services/donationApi';
 import { storageService } from '../services/storageService';
+
+// 出版年DatePicker用のカスタム入力欄（他の項目と同じ見た目に揃えるため）
+const YearInput = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+    (props, ref) => (
+        <input
+            {...props}
+            ref={ref}
+            readOnly
+            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', cursor: 'pointer', boxSizing: 'border-box' }}
+        />
+    )
+);
+YearInput.displayName = 'YearInput';
 
 interface DonationFormProps {
     mode: 'create' | 'edit';
@@ -39,8 +54,6 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
     const [previews, setPreviews] = useState<string[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
-    const [isStorageBrowserOpen, setIsStorageBrowserOpen] = useState(false);
-    const [existingImages, setExistingImages] = useState<string[]>([]);
 
     useEffect(() => {
         const loadMasterData = async () => {
@@ -91,13 +104,7 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        // published_yearは数値型として処理
-        if (name === 'published_year') {
-            const numValue = value === '' ? undefined : parseInt(value, 10);
-            setFormData(prev => ({ ...prev, [name]: numValue }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -120,26 +127,15 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
         setPreviews([URL.createObjectURL(file)]);
     };
 
+    // 出版年DatePickerの選択値を年(number)に変換してformDataへ反映
+    const handlePublishedYearChange = (date: Date | null) => {
+        setFormData(prev => ({ ...prev, published_year: date ? date.getFullYear() : undefined }));
+    };
+
     const removePreview = () => {
         setPreviews([]);
         setSelectedFiles([]);
         if (previews[0]) URL.revokeObjectURL(previews[0]);
-    };
-
-    const toggleStorageBrowser = async () => {
-        if (!isStorageBrowserOpen) {
-            const images = await storageService.listImages();
-            setExistingImages(images);
-        }
-        setIsStorageBrowserOpen(!isStorageBrowserOpen);
-    };
-
-    const selectExistingImage = (url: string) => {
-        setFormData(prev => ({ ...prev, image_urls: [url] }));
-        setIsStorageBrowserOpen(false);
-        // 新しくアップロードしようとしていたものはリセット
-        setPreviews([]);
-        setSelectedFiles([]);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -284,26 +280,26 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
 
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>画像</label>
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                        <input
-                            type="text"
-                            value={formData.image_urls?.[0] || ''}
-                            onChange={(e) => {
-                                setFormData(prev => ({ ...prev, image_urls: [e.target.value] }));
-                            }}
-                            placeholder="https://example.com/image.jpg"
-                            style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                        />
-                        {formData.image_urls?.[0] && (
-                            <button
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, image_urls: [] }))}
-                                style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                            >
-                                削除
-                            </button>
-                        )}
-                    </div>
+
+                    {formData.image_urls?.[0] && previews.length === 0 && (
+                        <div style={{ marginBottom: '15px' }}>
+                            <p style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>登録済みの画像:</p>
+                            <div style={{ position: 'relative', width: '100px', height: '100px' }}>
+                                <img
+                                    src={formData.image_urls[0]}
+                                    alt="登録済み画像"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px', border: '2px solid #ccc' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, image_urls: [] }))}
+                                    style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                         <label
@@ -312,13 +308,6 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                         >
                             PCからアップロード
                         </label>
-                        <button
-                            type="button"
-                            onClick={toggleStorageBrowser}
-                            style={{ padding: '8px 16px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
-                        >
-                            ストレージから選択
-                        </button>
                         <input
                             type="file"
                             accept="image/*"
@@ -327,37 +316,6 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                             id="file-upload"
                         />
                     </div>
-
-                    {isStorageBrowserOpen && (
-                        <div style={{
-                            padding: '15px',
-                            border: '1px solid #eee',
-                            borderRadius: '8px',
-                            marginBottom: '15px',
-                            maxHeight: '300px',
-                            overflowY: 'auto',
-                            backgroundColor: '#f9f9f9'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                <h4 style={{ margin: 0 }}>アップロード済み画像</h4>
-                                <button type="button" onClick={() => setIsStorageBrowserOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#666' }}>閉じる</button>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '10px' }}>
-                                {existingImages.map((url, idx) => (
-                                    <img
-                                        key={idx}
-                                        src={url}
-                                        alt="existing"
-                                        onClick={() => selectExistingImage(url)}
-                                        style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '2px solid transparent' }}
-                                        onMouseOver={e => e.currentTarget.style.borderColor = '#007bff'}
-                                        onMouseOut={e => e.currentTarget.style.borderColor = 'transparent'}
-                                    />
-                                ))}
-                                {existingImages.length === 0 && <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#888' }}>画像がありません</p>}
-                            </div>
-                        </div>
-                    )}
 
                     {previews.length > 0 && (
                         <div style={{ marginBottom: '15px' }}>
@@ -431,12 +389,14 @@ export default function DonationForm({ mode, initialData, onSubmit, onCancel, on
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>出版年</label>
-                            <input
-                                type="number"
-                                name="published_year"
-                                value={formData.published_year || ''}
-                                onChange={handleChange}
-                                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                            <DatePicker
+                                selected={formData.published_year ? new Date(formData.published_year, 0, 1) : null}
+                                onChange={handlePublishedYearChange}
+                                showYearPicker
+                                dateFormat="yyyy"
+                                placeholderText="年を選択"
+                                isClearable
+                                customInput={<YearInput />}
                             />
                         </div>
                         <div>
