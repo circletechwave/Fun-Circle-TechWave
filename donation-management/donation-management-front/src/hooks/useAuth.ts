@@ -8,6 +8,9 @@ export function useAuth() {
   const [userRole, setUserRole] = useState<'user' | 'admin' | 'system' | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // パスワード再設定リンク経由でアクセスされた場合にtrueになる
+  // （Supabaseがリンクのトークンを検証し、一時セッションを確立した際にPASSWORD_RECOVERYイベントを発火する）
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -16,6 +19,10 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (!mounted) return;
+
+        if (_event === 'PASSWORD_RECOVERY') {
+          setPasswordRecovery(true);
+        }
 
         setSession(session);
 
@@ -84,5 +91,10 @@ export function useAuth() {
     setUserName(null);
   };
 
-  return { session, userRole, userName, isAdmin, loading, signOut };
+  // パスワード再設定フォームでの設定完了後に、通常の画面へ戻すために呼び出す
+  const clearPasswordRecovery = () => {
+    setPasswordRecovery(false);
+  };
+
+  return { session, userRole, userName, isAdmin, loading, signOut, passwordRecovery, clearPasswordRecovery };
 }
