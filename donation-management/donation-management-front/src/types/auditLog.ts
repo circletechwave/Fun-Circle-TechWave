@@ -17,6 +17,8 @@ export type AuditAction =
   | 'LENDING_CREATE'
   | 'LENDING_RETURN'
   | 'API_ERROR'
+  | 'PASSWORD_RESET_REQUEST'
+  | 'PASSWORD_RESET_COMPLETE'
   | 'USER_ROLE_UPDATE';
 
 export interface AuditLog {
@@ -72,6 +74,8 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   LENDING_CREATE: '貸出作成',
   LENDING_RETURN: '返却処理',
   API_ERROR: 'APIエラー',
+  PASSWORD_RESET_REQUEST: 'パスワード再設定リクエスト',
+  PASSWORD_RESET_COMPLETE: 'パスワード再設定完了',
   USER_ROLE_UPDATE: 'ユーザー権限変更',
 };
 
@@ -87,5 +91,7 @@ export const ACTION_CATEGORIES: Record<AuditAction, 'security' | 'application'> 
   LENDING_CREATE: 'application',
   LENDING_RETURN: 'application',
   API_ERROR: 'application',
+  PASSWORD_RESET_REQUEST: 'security',
+  PASSWORD_RESET_COMPLETE: 'security',
   USER_ROLE_UPDATE: 'security',
 };

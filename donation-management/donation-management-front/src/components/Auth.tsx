@@ -10,6 +10,7 @@ export default function AuthComponent() {
   const [otp, setOtp] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
+  const [isForgotPassword, setIsForgotPassword] = useState(false)
   const [message, setMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
@@ -78,6 +79,37 @@ export default function AuthComponent() {
     }
   }
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
+
+    try {
+      // ドメイン制約の検証 (環境変数で制御)
+      if (import.meta.env.VITE_REQUIRE_HAPINS_DOMAIN === 'true') {
+        if (!email.endsWith('@hapins.net')) {
+          throw new Error('リセットできるメールアドレスは @hapins.net ドメインのみです');
+        }
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      })
+      if (error) throw error
+
+      // 監査ログに記録（非同期、エラーは無視）
+      authLogger.logPasswordResetRequest(email).catch(() => {
+        // エラーは無視
+      })
+      setMessage('パスワード再設定用のメールを送信しました。メールを確認してリンクを開いてください。')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'エラーが発生しました'
+      setMessage(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -122,7 +154,81 @@ export default function AuthComponent() {
 
   return (
     <div style={{ width: '100%', maxWidth: '630px', margin: '0 auto', padding: '40px' }}>
-      {isVerifying ? (
+      {isForgotPassword ? (
+        <form onSubmit={handleForgotPassword}>
+          <div style={{ marginBottom: '24px' }}>
+            <label htmlFor="reset-email" style={{ display: 'block', marginBottom: '8px', fontSize: '1.2rem', fontWeight: 'bold' }}>
+              メールアドレス
+            </label>
+            <input
+              id="reset-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '16px',
+                fontSize: '1.2rem',
+                border: '1px solid #ccc',
+                borderRadius: '8px'
+              }}
+            />
+          </div>
+
+          {message && (
+            <div style={{
+              padding: '16px',
+              marginBottom: '24px',
+              fontSize: '1.1rem',
+              backgroundColor: message.includes('送信しました') ? '#d4edda' : '#f8d7da',
+              color: message.includes('送信しました') ? '#155724' : '#721c24',
+              borderRadius: '8px'
+            }}>
+              {message}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '16px',
+              fontSize: '1.2rem',
+              fontWeight: 'bold',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              marginBottom: '24px'
+            }}
+          >
+            {loading ? '送信中...' : 'リセットメールを送信'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsForgotPassword(false)
+              setMessage('')
+            }}
+            style={{
+              width: '100%',
+              padding: '16px',
+              fontSize: '1.1rem',
+              backgroundColor: '#f0f0f0',
+              color: '#333',
+              border: '1px solid #ccc',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
+          >
+            戻る
+          </button>
+        </form>
+      ) : isVerifying ? (
         <form onSubmit={handleVerify}>
           <div style={{ marginBottom: '24px' }}>
             <label htmlFor="otp" style={{ display: 'block', marginBottom: '8px', fontSize: '1.2rem', fontWeight: 'bold' }}>
@@ -322,6 +428,29 @@ export default function AuthComponent() {
               {loading ? '処理中...' : (isSignUp ? 'サインアップ' : 'ログイン')}
             </button>
           </form>
+
+          {!isSignUp && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsForgotPassword(true)
+                setMessage('')
+              }}
+              style={{
+                width: '100%',
+                padding: '8px',
+                fontSize: '0.95rem',
+                background: 'none',
+                color: '#333',
+                border: 'none',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                marginBottom: '12px'
+              }}
+            >
+              パスワードをお忘れですか？
+            </button>
+          )}
 
           <button
             type="button"
