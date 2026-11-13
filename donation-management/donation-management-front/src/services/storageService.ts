@@ -32,9 +32,15 @@ export const storageService = {
             throw new Error('画像ファイルのみアップロード可能です。');
         }
 
+        // Storageポリシーにより、アップロードは自分のユーザーIDのフォルダ配下のみ許可されている
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            throw new Error('画像をアップロードするにはログインが必要です。');
+        }
+
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).slice(2)}_${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
+        const filePath = `${session.user.id}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
             .from(BUCKET_NAME)
