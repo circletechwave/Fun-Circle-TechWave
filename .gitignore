@@ -74,3 +74,6 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright MCP output
+.playwright-mcp/
