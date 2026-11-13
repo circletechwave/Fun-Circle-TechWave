@@ -184,6 +184,28 @@ ON CONFLICT (id) DO NOTHING;
 
 
 -- =================================================
+-- Phase 5: 動作確認用ログインユーザー（ローカル専用）
+-- Playwright MCP などでのブラウザ確認に使う（docs/PLAYWRIGHT_MCP.md 参照）
+-- パスワードは共通で E2eTest#2026
+-- public.users は auth.users の INSERT トリガー（handle_new_confirmed_user）で作成される
+-- =================================================
+
+-- 12. auth.users（ログイン可能なユーザー）
+-- GoTrue はトークン列が NULL だとログインに失敗するため空文字を明示する
+INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, confirmation_token, recovery_token, email_change_token_new, email_change, created_at, updated_at) VALUES
+  ('3a5ef379-bc1f-4639-8ef1-cf1d056e38a4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'e2e-a@company.com', extensions.crypt('E2eTest#2026', extensions.gen_salt('bf')), now(), '{"provider": "email", "providers": ["email"]}', '{"name": "e2e-a"}', '', '', '', '', now(), now()),
+  ('a228b11d-e42b-4ef3-a2e9-3e624151b840', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'e2e-b@company.com', extensions.crypt('E2eTest#2026', extensions.gen_salt('bf')), now(), '{"provider": "email", "providers": ["email"]}', '{"name": "e2e-b"}', '', '', '', '', now(), now())
+ON CONFLICT (id) DO NOTHING;
+
+
+-- 13. auth.identities（メール認証の紐付け）
+INSERT INTO auth.identities (id, user_id, provider_id, provider, identity_data, created_at, updated_at) VALUES
+  ('3a5ef379-bc1f-4639-8ef1-cf1d056e38a4', '3a5ef379-bc1f-4639-8ef1-cf1d056e38a4', '3a5ef379-bc1f-4639-8ef1-cf1d056e38a4', 'email', '{"sub": "3a5ef379-bc1f-4639-8ef1-cf1d056e38a4", "email": "e2e-a@company.com"}', now(), now()),
+  ('a228b11d-e42b-4ef3-a2e9-3e624151b840', 'a228b11d-e42b-4ef3-a2e9-3e624151b840', 'a228b11d-e42b-4ef3-a2e9-3e624151b840', 'email', '{"sub": "a228b11d-e42b-4ef3-a2e9-3e624151b840", "email": "e2e-b@company.com"}', now(), now())
+ON CONFLICT (provider_id, provider) DO NOTHING;
+
+
+-- =================================================
 -- 実行完了確認
 -- =================================================
 
