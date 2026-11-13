@@ -261,6 +261,8 @@ pnpm test:coverage
 pnpm test:e2e
 ```
 
+ブラウザでの動作確認は Playwright MCP で行う（前提条件・テストユーザー・ハマりどころは [docs/PLAYWRIGHT_MCP.md](./docs/PLAYWRIGHT_MCP.md)）。
+
 ### ビルド・デプロイ / Build & Deploy
 ```bash
 # フロントエンドビルド
@@ -902,6 +904,7 @@ chore: 依存関係をアップデート
 - [ ] ローディング/エラー表示
 - [ ] フォームバリデーション
 - [ ] 日本語メッセージ
+- [ ] Playwright MCP で実際の画面操作を確認（[docs/PLAYWRIGHT_MCP.md](./docs/PLAYWRIGHT_MCP.md)）
 
 ### 効率的な実装パターン
 
@@ -1038,6 +1041,7 @@ pnpm build
 - [データベース設計書](./docs/DATABASE_DESIGN.md)
 - [API仕様書](./docs/API_SPECIFICATION.md)
 - [デプロイ手順書](./docs/DEPLOYMENT.md)
+- [Playwright MCP によるブラウザ動作確認](./docs/PLAYWRIGHT_MCP.md)
 
 ---
 

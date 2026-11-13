@@ -272,6 +272,10 @@ describe('Button', () => {
 });
 ```
 
+### 4.3 ブラウザでの動作確認
+画面操作を伴う変更は、Claude Code から Playwright MCP でローカル環境を操作して確認する。
+前提条件・テストユーザー・ハマりどころは [PLAYWRIGHT_MCP.md](./PLAYWRIGHT_MCP.md) を参照。
+
 ## 5. セキュリティ
 
 ### 5.1 基本原則
