@@ -75,5 +75,9 @@ coverage/
 *.tsbuildinfo
 next-env.d.ts
 
+# Claude Code（個人設定とワークツリー）
+.claude/settings.local.json
+.claude/worktrees/
+
 # Playwright MCP output
 .playwright-mcp/
