@@ -3,7 +3,7 @@
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": ["@playwright/mcp@0.0.85"]
+      "args": ["@playwright/mcp@latest"]
     }
   }
 }
